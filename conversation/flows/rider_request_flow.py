@@ -16,6 +16,7 @@ from conversation.state.rider_request_steps import (
     SELECTING_RIDER
 )
 
+from conversation.state.payment_steps import *
 
 # =========================================
 # VIEW MATCHING REQUESTS
@@ -654,10 +655,23 @@ def handle_rider_selection(
     )
 
     booking.status = (
-        "RIDER_SELECTED"
+        "PAYMENT_PENDING"
     )
 
     booking.save()
+    session.context = {
+
+        "active_flow": PAYMENT_FLOW,
+
+        "step": AWAITING_PAYMENT,
+
+        "data": {
+
+            "booking_id": booking.id
+        }
+    }
+
+    session.save()
 
     # =====================================
     # CANCEL OTHER RESPONSES
@@ -716,13 +730,27 @@ def handle_rider_selection(
 
         session.phone_number,
 
+        # (
+        #     "✅ Driver selected successfully.\n\n"
+
+        #     f"Driver: "
+        #     f"{selected_response.rider.first_name}\n"
+
+        #     f"Price: ₦{booking.final_price}"
+        # )
         (
-            "✅ Driver selected successfully.\n\n"
+            "✅ Driver selected successfully\n\n"
 
             f"Driver: "
             f"{selected_response.rider.first_name}\n"
 
-            f"Price: ₦{booking.final_price}"
+            f"Price: ₦{booking.final_price}\n\n"
+
+            "Reply with:\n\n"
+
+            "• pay now\n"
+
+            "• cancel ride"
         )
     )
 
