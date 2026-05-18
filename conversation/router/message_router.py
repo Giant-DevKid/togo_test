@@ -15,9 +15,6 @@ from conversation.flows.route_flow import *
 
 from conversation.flows.rider_request_flow import *
 
-from conversation.flows.ride_status_flow import (
-    view_my_rides
-)
 
 from conversation.services.response_service import (
     build_fallback_response
@@ -158,6 +155,25 @@ def route_message(
             message,
             None
         )
+    
+    # =====================================
+    # RIDE OFFER FLOW
+    # =====================================
+
+    if active_flow == RIDE_OFFER_FLOW:
+
+        step = session.context.get(
+            "step"
+        )
+
+        if step == SELECTING_RIDER:
+
+            return handle_rider_selection(
+
+                session,
+
+                message
+            )    
 
     # =====================================
     # ROUTE FLOW
@@ -273,7 +289,7 @@ def route_message(
 
     if intent == VIEW_RIDES:
 
-        return view_my_rides(
+        return view_ride_offers(
             session
         )
 
@@ -359,72 +375,16 @@ def route_message(
         return view_ride_requests(
             session
         )
-
+    
     # =====================================
-    # RIDE REQUEST ACTIONS
+    # VIEW RIDE OFFERS
     # =====================================
 
-    # if intent in [
+    if intent == VIEW_RIDE_OFFERS:
 
-    #     ACCEPT_BOOKING,
-
-    #     REJECT_BOOKING,
-
-    #     UPDATE_BOOKING_PRICE
-    # ]:
-
-    #     extracted = (
-    #         extract_booking_action(
-    #             message
-    #         )
-    #     )
-
-    #     response_id = extracted.get(
-    #         "booking_reference"
-    #     )
-
-    #     # ==============================
-    #     # ACCEPT
-    #     # ==============================
-
-    #     if intent == ACCEPT_BOOKING:
-
-    #         return accept_ride_request(
-
-    #             session,
-
-    #             response_id
-    #         )
-
-    #     # ==============================
-    #     # REJECT
-    #     # ==============================
-
-    #     if intent == REJECT_BOOKING:
-
-    #         return reject_ride_request(
-
-    #             session,
-
-    #             response_id
-    #         )
-
-    #     # ==============================
-    #     # OFFER NEW PRICE
-    #     # ==============================
-
-    #     if intent == UPDATE_BOOKING_PRICE:
-
-    #         return offer_new_price(
-
-    #             session,
-
-    #             response_id,
-
-    #             extracted.get(
-    #                 "updated_price"
-    #             )
-    #         )
+        return view_ride_offers(
+            session
+        )
 
     # =====================================
     # FALLBACK

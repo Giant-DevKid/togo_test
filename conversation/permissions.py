@@ -8,7 +8,11 @@ ROLE_PERMISSIONS = {
 
         "CANCEL_BOOKING",
 
-        "VIEW_RIDES"
+        "VIEW_RIDES",
+        
+        "VIEW_RIDE_OFFERS",
+
+        "SELECT_RIDER"
     ],
 
     "rider": [

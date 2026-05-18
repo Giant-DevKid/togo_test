@@ -216,7 +216,7 @@ class RideBookingResponse(models.Model):
         ("PAYMENT_PENDING", "Payment Pending"),
 
         ("ACCEPTED", "Accepted"),
-
+        ("REJECTED", "Rejected"),
         ("COMPLETED", "Completed"),
 
         ("CANCELLED", "Cancelled"),

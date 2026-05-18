@@ -5,3 +5,4 @@ from .models import DriverRoute, RideBooking, RideBookingResponse
 
 admin.site.register(RideBooking)
 admin.site.register(DriverRoute)
+admin.site.register(RideBookingResponse)

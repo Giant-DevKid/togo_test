@@ -1,11 +1,19 @@
 import re
 
 from rideshare.models import (
-    RideBookingResponse
+    RideBookingResponse,
+    RideBooking,
 )
 
 from conversation.services.message_service import (
     send_text
+)
+
+from conversation.state.rider_request_steps import (
+
+    RIDE_OFFER_FLOW,
+
+    SELECTING_RIDER
 )
 
 
@@ -89,7 +97,7 @@ def view_ride_requests(
 
 
 # =========================================
-# ACCEPT RIDE REQUEST
+# RIDER RIDE REQUEST ACTIONS SELECTION
 # =========================================
 def accept_ride_request(
     session,
@@ -103,9 +111,7 @@ def accept_ride_request(
 
             id=response_id,
 
-            rider=session.user,
-
-            response="PENDING"
+            rider=session.user
         )
         .select_related("booking")
         .first()
@@ -118,56 +124,25 @@ def accept_ride_request(
             session.phone_number,
 
             (
-                "Ride request not found "
-                "or already handled."
+                "Ride request not found."
             )
         )
 
     # =====================================
-    # ACCEPT RESPONSE
+    # UPDATE RESPONSE ONLY
     # =====================================
 
     ride_response.response = (
         "ACCEPTED"
     )
 
+    ride_response.updated_price = (
+        ride_response.booking.estimated_price
+    )
+
     ride_response.save()
 
     booking = ride_response.booking
-
-    # =====================================
-    # UPDATE BOOKING
-    # =====================================
-
-    booking.selected_rider = (
-        session.user
-    )
-
-    booking.status = (
-        "RIDER_SELECTED"
-    )
-
-    booking.final_price = (
-        booking.estimated_price
-    )
-
-    booking.save()
-
-    # =====================================
-    # CANCEL OTHER REQUESTS
-    # =====================================
-
-    RideBookingResponse.objects.filter(
-
-        booking=booking
-
-    ).exclude(
-
-        id=ride_response.id
-
-    ).update(
-        response="CANCELLED"
-    )
 
     # =====================================
     # NOTIFY PASSENGER
@@ -178,17 +153,16 @@ def accept_ride_request(
         booking.passenger.phone_no,
 
         (
-            "✅ Rider Accepted Your Ride\n\n"
+            "🚘 A Driver Accepted Your Ride\n\n"
 
             f"Driver: "
             f"{session.user.first_name}\n"
 
             f"Price: ₦"
-            f"{booking.final_price}\n\n"
+            f"{booking.estimated_price}\n\n"
 
-            "You can say:\n"
-
-            "• view my rides"
+            "Say:\n"
+            "• view ride offers"
         )
     )
 
@@ -196,9 +170,7 @@ def accept_ride_request(
 
         session.phone_number,
 
-        (
-            "Ride request accepted ✅"
-        )
+        "Ride request accepted ✅"
     )
 
 
@@ -231,7 +203,7 @@ def reject_ride_request(
         )
 
     ride_response.response = (
-        "CANCELLED"
+        "REJECTED"
     )
 
     ride_response.save()
@@ -242,6 +214,7 @@ def reject_ride_request(
 
         "Ride request rejected."
     )
+
 
 def offer_new_price(
     session,
@@ -256,9 +229,7 @@ def offer_new_price(
 
             id=response_id,
 
-            rider=session.user,
-
-            response="PENDING"
+            rider=session.user
         )
         .select_related("booking")
         .first()
@@ -270,8 +241,12 @@ def offer_new_price(
 
             session.phone_number,
 
-            "Ride request not found or already processed."
+            "Ride request not found."
         )
+
+    # =====================================
+    # UPDATE RESPONSE
+    # =====================================
 
     ride_response.response = (
         "ACCEPTED"
@@ -285,43 +260,24 @@ def offer_new_price(
 
     booking = ride_response.booking
 
-    booking.selected_rider = (
-        session.user
-    )
+    # =====================================
+    # NOTIFY PASSENGER
+    # =====================================
 
-    booking.final_price = price
-
-    booking.status = (
-        "RIDER_SELECTED"
-    )
-
-    booking.save()
-
-    # cancel others
-    RideBookingResponse.objects.filter(
-
-        booking=booking
-
-    ).exclude(
-
-        id=ride_response.id
-
-    ).update(
-        response="CANCELLED"
-    )
-
-    # notify passenger
     send_text(
 
         booking.passenger.phone_no,
 
         (
-            "🚘 Rider Accepted Your Ride\n\n"
+            "🚘 Driver Sent New Offer\n\n"
+
+            f"Driver: "
+            f"{session.user.first_name}\n"
 
             f"New Price: ₦{price}\n\n"
 
-            f"Driver: "
-            f"{session.user.first_name}"
+            "Say:\n"
+            "• view ride offers"
         )
     )
 
@@ -330,11 +286,9 @@ def offer_new_price(
         session.phone_number,
 
         (
-            "Ride accepted with "
-            f"new price ₦{price} ✅"
+            f"New offer sent: ₦{price} ✅"
         )
     )
-
 
 
 # =========================================
@@ -425,3 +379,351 @@ def handle_driver_request_action(
         )
 
     return None
+
+
+# =========================================
+# VIEW RIDE OFFERS
+# =========================================
+
+def view_ride_offers(
+    session
+):
+
+    booking = (
+
+        RideBooking.objects
+        .filter(
+
+            passenger=session.user,
+
+            status="PENDING"
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if not booking:
+
+        return send_text(
+
+            session.phone_number,
+
+            (
+                "You do not have any "
+                "active ride requests."
+            )
+        )
+
+    responses = (
+
+        RideBookingResponse.objects
+        .filter(
+
+            booking=booking,
+
+            response="ACCEPTED"
+        )
+        .select_related("rider")
+        .order_by("created_at")
+    )
+
+    if not responses.exists():
+
+        return send_text(
+
+            session.phone_number,
+
+            (
+                "No drivers have responded "
+                "to your ride yet."
+            )
+        )
+
+    message = (
+        "🚘 Driver Offers\n\n"
+    )
+
+    for index, response in enumerate(
+        responses,
+        start=1
+    ):
+
+        price = (
+
+            response.updated_price
+
+            or
+
+            booking.estimated_price
+        )
+
+        message += (
+
+            f"{index}. "
+
+            f"{response.rider.first_name}\n"
+
+            f"Price: ₦{price}\n\n"
+        )
+
+    # message += (
+
+    #     "Reply with:\n\n"
+
+    #     "select 1\n"
+
+    #     "select 2"
+    # )
+    message += (
+
+        "Reply with the number of "
+        "the driver you want.\n\n"
+
+        "Example:\n"
+        "1"
+    )
+
+    # =====================================
+    # SAVE FLOW CONTEXT
+    # =====================================
+
+    session.context = {
+
+        "active_flow": (
+            RIDE_OFFER_FLOW
+        ),
+
+        "step": (
+            SELECTING_RIDER
+        ),
+
+        "data": {
+
+            "booking_id": booking.id
+        }
+    }
+
+    session.save()
+
+    return send_text(
+
+        session.phone_number,
+
+        message
+    )
+
+
+# =========================================
+# HANDLE RIDER SELECTION
+# =========================================
+def handle_rider_selection(
+    session,
+    message
+):
+
+    normalized_message = (
+        message.strip()
+    )
+
+    # =====================================
+    # VALIDATE INPUT
+    # =====================================
+
+    if not normalized_message.isdigit():
+
+        return send_text(
+
+            session.phone_number,
+
+            (
+                "Please reply with the "
+                "driver number only.\n\n"
+
+                "Example:\n"
+                "1"
+            )
+        )
+
+    selected_index = int(
+        normalized_message
+    )
+
+    # =====================================
+    # GET BOOKING
+    # =====================================
+
+    booking_id = (
+
+        session.context["data"]
+        .get("booking_id")
+    )
+
+    booking = (
+
+        RideBooking.objects
+        .filter(
+
+            id=booking_id,
+
+            passenger=session.user
+        )
+        .first()
+    )
+
+    if not booking:
+
+        return send_text(
+
+            session.phone_number,
+
+            "Booking not found."
+        )
+
+    # =====================================
+    # GET ACCEPTED RESPONSES
+    # =====================================
+
+    responses = list(
+
+        RideBookingResponse.objects
+        .filter(
+
+            booking=booking,
+
+            response="ACCEPTED"
+        )
+        .select_related("rider")
+        .order_by("created_at")
+    )
+
+    if not responses:
+
+        return send_text(
+
+            session.phone_number,
+
+            (
+                "No accepted driver offers found."
+            )
+        )
+
+    # =====================================
+    # VALIDATE SELECTION
+    # =====================================
+
+    if (
+
+        selected_index < 1
+
+        or
+
+        selected_index > len(responses)
+    ):
+
+        return send_text(
+
+            session.phone_number,
+
+            (
+                "Invalid driver number.\n\n"
+
+                "Please choose a valid "
+                "number from the list."
+            )
+        )
+
+    selected_response = responses[
+        selected_index - 1
+    ]
+
+    # =====================================
+    # FINALIZE BOOKING
+    # =====================================
+
+    booking.selected_rider = (
+        selected_response.rider
+    )
+
+    booking.final_price = (
+
+        selected_response.updated_price
+
+        or
+
+        booking.estimated_price
+    )
+
+    booking.status = (
+        "RIDER_SELECTED"
+    )
+
+    booking.save()
+
+    # =====================================
+    # CANCEL OTHER RESPONSES
+    # =====================================
+
+    RideBookingResponse.objects.filter(
+
+        booking=booking
+
+    ).exclude(
+
+        id=selected_response.id
+
+    ).update(
+        response="CANCELLED"
+    )
+
+    # =====================================
+    # NOTIFY SELECTED DRIVER
+    # =====================================
+
+    send_text(
+
+        selected_response.rider.phone_no,
+
+        (
+            "🎉 Passenger Selected You\n\n"
+
+            f"Pickup: "
+            f"{booking.pickup_name}\n"
+
+            f"Destination: "
+            f"{booking.destination_name}\n\n"
+
+            f"Final Price: "
+            f"₦{booking.final_price}"
+        )
+    )
+
+    # =====================================
+    # RESET FLOW
+    # =====================================
+
+    session.context = {
+
+        "active_flow": None,
+
+        "step": None,
+
+        "data": {}
+    }
+
+    session.save()
+
+    return send_text(
+
+        session.phone_number,
+
+        (
+            "✅ Driver selected successfully.\n\n"
+
+            f"Driver: "
+            f"{selected_response.rider.first_name}\n"
+
+            f"Price: ₦{booking.final_price}"
+        )
+    )
+
+
