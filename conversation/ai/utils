@@ -1,0 +1,80 @@
+import re
+
+def extract_number(message: str):
+
+    if not message:
+        return None
+
+    message = message.strip().lower()
+
+    # =====================================
+    # DIRECT NUMBER
+    # =====================================
+    if message.isdigit():
+        return int(message)
+
+    # =====================================
+    # PATTERN: "select rider 2"
+    # =====================================
+    match = re.search(r"\b(\d+)\b", message)
+
+    if match:
+        return int(match.group(1))
+
+    return None
+
+
+
+def extract_booking_id(message: str):
+
+    if not message:
+        return None
+
+    message = message.lower()
+
+    # =====================================
+    # UUID SUPPORT (if you use UUIDs)
+    # =====================================
+    uuid_match = re.search(
+        r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+        message
+    )
+
+    if uuid_match:
+        return uuid_match.group(0)
+
+    # =====================================
+    # NUMERIC ID SUPPORT
+    # =====================================
+    num_match = re.search(r"\b(\d+)\b", message)
+
+    if num_match:
+        return num_match.group(1)
+
+    return None
+
+
+
+def extract_price(message: str):
+
+    if not message:
+        return None
+
+    message = message.lower()
+
+    # Remove currency symbols and commas
+    cleaned = message.replace("₦", "").replace(",", "")
+
+    # =====================================
+    # FIND FIRST NUMBER
+    # =====================================
+    match = re.search(r"\b(\d+)\b", cleaned)
+
+    if match:
+        return float(match.group(1))
+
+    return None
+
+def ai_extract_price(message):
+    # fallback to LLM if regex fails
+    pass
