@@ -2,7 +2,7 @@ from rideshare.models import Vehicle
 
 from rideshare.services import get_user_vehicle
 
-from conversation.services.message_service import send_text
+from conversation.services.message_service import send_text, send_button_message
 
 from conversation.state.vehicle_steps import (
     VEHICLE_FLOW,

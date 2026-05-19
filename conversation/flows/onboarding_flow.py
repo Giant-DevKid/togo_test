@@ -17,12 +17,7 @@ from conversation.state.onboarding_steps import (
 
 from account.services import create_user_account, send_verification_otp, verify_user_otp
 
-SUPPORTED_ROLES = [
-    "passenger", 
-    "rider", 
-    "event_organiser", 
-    "tour_guide"
-    ]
+SUPPORTED_ROLES = ["passenger", "rider", "event_organiser", "tour_guide"]
 
 WELCOME_IMAGE_URL = "https://i.pravatar.cc/100"
 
@@ -51,16 +46,7 @@ def start_onboarding_flow(session):
     # SEND WELCOME IMAGE COMING SOON
     # =====================================
 
-    send_image(
-
-        session.phone_number,
-
-        WELCOME_IMAGE_URL,
-
-        (
-            "Welcome to Togo Mobility 🚗"
-        )
-    )
+    send_image(session.phone_number, WELCOME_IMAGE_URL, ("Welcome to Togo Mobility 🚗"))
 
     # =====================================
     # SEND INTRO MESSAGE
@@ -84,7 +70,9 @@ def start_onboarding_flow(session):
             "• Driver\n"
             "• Event Organizer\n"
             "• Tour Guide\n\n"
-            "Just tell me what you'd like to do."
+            "Just tell me what you'd like to do. "
+            "Use cancel, stop, exit or reset to "
+            "to cancel your current session"
         ),
     )
 

@@ -32,6 +32,9 @@ Inputs:
 - User role
 - Returning user or new user
 
+Include these in you message:
+Use cancel, stop, exit or reset to to cancel your current session"
+
 Mention what the user can do on the platform based on their role.
 
 Keep response:

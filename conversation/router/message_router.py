@@ -2,42 +2,24 @@ from conversation.flows.onboarding_flow import (
     start_onboarding_flow,
     handle_onboarding_flow,
 )
-
+from conversation.ai.generators.welcome_generator import generate_welcome_message
 from conversation.flows.vehicle_flow import handle_vehicle_flow
-
 from conversation.flows.booking_flow import handle_booking_flow
-
 from conversation.flows.route_flow import *
-
 from conversation.flows.rider_request_flow import *
-
-
 from conversation.services.response_service import build_fallback_response
-
 from conversation.services.message_service import send_text
-
 from conversation.services.session_service import reset_session
-
 from conversation.services.permission_service import can_access_intent
-
 from conversation.services.access_message_service import get_access_denied_message
-
 from conversation.ai.intent.detector import detect_intent
-
 from conversation.state.onboarding_steps import ONBOARDING_FLOW
-
 from conversation.state.vehicle_steps import VEHICLE_FLOW
-
 from conversation.state.bank_steps import BANK_FLOW, BANK_UPDATE_FLOW
-
 from conversation.state.route_steps import *
-
 from conversation.state.booking_steps import BOOKING_FLOW
 from conversation.state.payment_steps import PAYMENT_FLOW, AWAITING_PAYMENT
-
-
 from conversation.flows.ride_completion_flow import handle_ride_completion_flow
-
 from conversation.flows.bank_flow import (
     start_bank_flow,
     handle_bank_flow,
@@ -46,13 +28,73 @@ from conversation.flows.bank_flow import (
 )
 
 from conversation.flows.payment_flow import handle_payment_flow
-
 from conversation.ai.intent.intents import *
 
 GLOBAL_EXIT_COMMANDS = ["cancel", "stop", "exit", "reset"]
+GREETING_MESSAGES = [
+    "hi",
+    "hello",
+    "hey",
+    "yo",
+    "start",
+    "good morning",
+    "good afternoon",
+    "good evening",
+]
 
 
 def route_message(session, message):
+    # =====================================
+    # BUTTON PAYLOAD NORMALIZATION
+    # =====================================
+
+    BUTTON_MESSAGE_MAP = {
+
+        # VEHICLE
+        "create_vehicle": "add my vehicle",
+
+        "update_vehicle": "update my vehicle",
+
+        "vehicle_type_car": "car",
+
+        "vehicle_type_bus": "bus",
+
+        "vehicle_type_motorcycle": "motorcycle",
+
+        # BANK
+        "add_bank_account": "add bank account",
+
+        "update_bank_account": "update bank account",
+
+        "view_bank_account": "view bank account",
+
+        # PAYMENT
+        "pay_now": "pay now",
+
+        "cancel_ride": "cancel ride",
+
+        # ROUTES
+        "create_route": "create route",
+
+        "view_routes": "view my routes",
+
+        # RIDES
+        "view_ride_requests": "view ride requests",
+
+        "view_ride_offers": "view ride offers",
+    }
+
+    # =====================================
+    # CONVERT BUTTON ID TO TEXT
+    # =====================================
+
+    if message in BUTTON_MESSAGE_MAP:
+
+        message = BUTTON_MESSAGE_MAP[message]
+
+    # normalized_message = (
+    #     message.strip().lower()
+    # )
 
     normalized_message = message.strip().lower()
 
@@ -87,6 +129,30 @@ def route_message(session, message):
     if not session.user:
 
         return start_onboarding_flow(session)
+
+    # =====================================
+    # RETURNING USER GREETING
+    # =====================================
+
+    if normalized_message in GREETING_MESSAGES:
+
+        session.context = {
+            "active_flow": None,
+            "step": None,
+            "data": {},
+        }
+
+        session.save()
+
+        welcome_message = generate_welcome_message(
+            session.user,
+            is_returning=True,
+        )
+
+        return send_text(
+            session.phone_number,
+            welcome_message,
+        )
 
     # =====================================
     # VEHICLE FLOW
@@ -183,96 +249,6 @@ def route_message(session, message):
     if driver_action_response:
 
         return driver_action_response
-
-    # =====================================
-    # REQUEST OTP
-    # =====================================
-
-    # if normalized_message.startswith(
-    #     "request otp"
-    # ):
-
-    #     parts = normalized_message.split()
-
-    #     if len(parts) != 3:
-
-    #         return send_text(
-
-    #             session.phone_number,
-
-    #             (
-    #                 "Example:\n\n"
-
-    #                 "request otp 31"
-    #             )
-    #         )
-
-    #     booking_id = parts[2]
-
-    #     if not booking_id.isdigit():
-
-    #         return send_text(
-
-    #             session.phone_number,
-
-    #             (
-    #                 "Invalid booking ID."
-    #             )
-    #         )
-
-    #     return request_ride_otp(
-
-    #         session,
-
-    #         int(booking_id)
-    #     )
-
-    # =====================================
-    # VERIFY OTP
-    # =====================================
-
-    # if normalized_message.startswith(
-    #     "verify otp"
-    # ):
-
-    #     parts = normalized_message.split()
-
-    #     if len(parts) != 4:
-
-    #         return send_text(
-
-    #             session.phone_number,
-
-    #             (
-    #                 "Example:\n\n"
-
-    #                 "verify otp 31 4421"
-    #             )
-    #         )
-
-    #     booking_id = parts[2]
-
-    #     otp = parts[3]
-
-    #     if not booking_id.isdigit():
-
-    #         return send_text(
-
-    #             session.phone_number,
-
-    #             (
-    #                 "Invalid booking ID."
-    #             )
-    #         )
-
-    #     return verify_ride_otp(
-
-    #         session,
-
-    #         int(booking_id),
-
-    #         otp
-    #     )
 
     # =====================================
     # DETECT INTENT
