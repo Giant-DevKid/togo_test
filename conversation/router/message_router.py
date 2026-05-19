@@ -53,12 +53,19 @@ from conversation.state.route_steps import *
 from conversation.state.booking_steps import (
     BOOKING_FLOW
 )
+from conversation.state.payment_steps import (
+
+    PAYMENT_FLOW,
+
+    AWAITING_PAYMENT
+)
+
+from conversation.flows.payment_flow import (
+    handle_payment_flow
+)
 
 from conversation.ai.intent.intents import *
 
-from conversation.services.booking_service import (
-    extract_booking_action
-)
 
 
 GLOBAL_EXIT_COMMANDS = [
@@ -169,6 +176,27 @@ def route_message(
         if step == SELECTING_RIDER:
 
             return handle_rider_selection(
+
+                session,
+
+                message
+            )
+
+    # =====================================
+    # RIDE OFFER PYMENT FLOW
+    # =====================================
+    print("ACTIVE FLOW:", active_flow)
+
+    print("SESSION CONTEXT:", session.context)
+    if active_flow == PAYMENT_FLOW:
+
+        step = session.context.get(
+            "step"
+        )
+
+        if step == AWAITING_PAYMENT:
+
+            return handle_payment_flow(
 
                 session,
 

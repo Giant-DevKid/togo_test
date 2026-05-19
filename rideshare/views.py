@@ -3,6 +3,10 @@ import json
 import hmac
 import hashlib
 from django.db import transaction
+from django.shortcuts import (render, get_object_or_404)
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 
 from django.http import (
@@ -162,6 +166,7 @@ def paystack_webhook(
     # =====================================
     # NOTIFY PASSENGER
     # =====================================
+    
 
     send_passenger_payment_success_message(
         booking
@@ -179,3 +184,108 @@ def paystack_webhook(
 
         "success": True
     })
+
+
+
+def paystack_callback_page(request):
+
+    reference = request.GET.get(
+        "reference"
+    )
+
+    trxref = request.GET.get(
+        "trxref"
+    )
+    payment = get_object_or_404(
+
+        Payment.objects.select_related(
+
+            "booking",
+
+            "passenger",
+
+            "rider"
+        ),
+
+        payment_reference=reference
+    )
+
+    booking = payment.booking
+
+    context = {
+
+        "reference": reference,
+
+        "trxref": trxref,
+        "payment": payment,
+
+        "booking": booking
+    }
+
+    return render(
+
+        request,
+
+        "payment/paystack_callback.html",
+
+        context
+    )
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+
+from .models import Payment
+
+
+class PaystackCallbackAPIView(APIView):
+    """
+    Handle Paystack callback verification.
+    """
+
+    authentication_classes = []
+    permission_classes = []
+
+    def get(self, request, *args, **kwargs):
+
+        reference = request.GET.get("reference")
+        trxref = request.GET.get("trxref")
+
+        if not reference:
+            return Response(
+                {
+                    "success": False,
+                    "message": "Payment reference is required.",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        payment = get_object_or_404(
+            Payment.objects.select_related(
+                "booking",
+                "passenger",
+                "rider",
+            ),
+            payment_reference=reference,
+        )
+
+        booking = payment.booking
+
+        data = {
+            "success": True,
+            "reference": reference,
+            "trxref": trxref,
+            "payment": {
+                "id": payment.id,
+                "payment_reference": payment.payment_reference,
+                "amount": payment.amount,
+                "status": payment.status,
+            },
+            "booking": {
+                "id": booking.id,
+            },
+        }
+
+        return Response(data, status=status.HTTP_200_OK)

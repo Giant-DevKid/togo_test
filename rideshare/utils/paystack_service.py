@@ -1,7 +1,7 @@
 import requests
 import os
 
-from models import Payment
+from rideshare.models import Payment
 
 def initialize_paystack_payment(
     booking

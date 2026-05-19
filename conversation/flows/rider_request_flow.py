@@ -711,33 +711,13 @@ def handle_rider_selection(
         )
     )
 
-    # =====================================
-    # RESET FLOW
-    # =====================================
-
-    session.context = {
-
-        "active_flow": None,
-
-        "step": None,
-
-        "data": {}
-    }
-
     session.save()
 
     return send_text(
 
         session.phone_number,
 
-        # (
-        #     "✅ Driver selected successfully.\n\n"
-
-        #     f"Driver: "
-        #     f"{selected_response.rider.first_name}\n"
-
-        #     f"Price: ₦{booking.final_price}"
-        # )
+       
         (
             "✅ Driver selected successfully\n\n"
 
