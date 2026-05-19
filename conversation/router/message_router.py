@@ -63,9 +63,10 @@ from conversation.state.payment_steps import (
 
 from conversation.flows.ride_completion_flow import (
 
-    request_ride_otp,
+    # request_ride_otp,
 
-    verify_ride_otp
+    # verify_ride_otp,
+    handle_ride_completion_flow
 )
 
 from conversation.flows.payment_flow import (
@@ -290,92 +291,92 @@ def route_message(
     # REQUEST OTP
     # =====================================
 
-    if normalized_message.startswith(
-        "request otp"
-    ):
+    # if normalized_message.startswith(
+    #     "request otp"
+    # ):
 
-        parts = normalized_message.split()
+    #     parts = normalized_message.split()
 
-        if len(parts) != 3:
+    #     if len(parts) != 3:
 
-            return send_text(
+    #         return send_text(
 
-                session.phone_number,
+    #             session.phone_number,
 
-                (
-                    "Example:\n\n"
+    #             (
+    #                 "Example:\n\n"
 
-                    "request otp 31"
-                )
-            )
+    #                 "request otp 31"
+    #             )
+    #         )
 
-        booking_id = parts[2]
+    #     booking_id = parts[2]
 
-        if not booking_id.isdigit():
+    #     if not booking_id.isdigit():
 
-            return send_text(
+    #         return send_text(
 
-                session.phone_number,
+    #             session.phone_number,
 
-                (
-                    "Invalid booking ID."
-                )
-            )
+    #             (
+    #                 "Invalid booking ID."
+    #             )
+    #         )
 
-        return request_ride_otp(
+    #     return request_ride_otp(
 
-            session,
+    #         session,
 
-            int(booking_id)
-        )
+    #         int(booking_id)
+    #     )
 
 
     # =====================================
     # VERIFY OTP
     # =====================================
 
-    if normalized_message.startswith(
-        "verify otp"
-    ):
+    # if normalized_message.startswith(
+    #     "verify otp"
+    # ):
 
-        parts = normalized_message.split()
+    #     parts = normalized_message.split()
 
-        if len(parts) != 4:
+    #     if len(parts) != 4:
 
-            return send_text(
+    #         return send_text(
 
-                session.phone_number,
+    #             session.phone_number,
 
-                (
-                    "Example:\n\n"
+    #             (
+    #                 "Example:\n\n"
 
-                    "verify otp 31 4421"
-                )
-            )
+    #                 "verify otp 31 4421"
+    #             )
+    #         )
 
-        booking_id = parts[2]
+    #     booking_id = parts[2]
 
-        otp = parts[3]
+    #     otp = parts[3]
 
-        if not booking_id.isdigit():
+    #     if not booking_id.isdigit():
 
-            return send_text(
+    #         return send_text(
 
-                session.phone_number,
+    #             session.phone_number,
 
-                (
-                    "Invalid booking ID."
-                )
-            )
+    #             (
+    #                 "Invalid booking ID."
+    #             )
+    #         )
 
-        return verify_ride_otp(
+    #     return verify_ride_otp(
 
-            session,
+    #         session,
 
-            int(booking_id),
+    #         int(booking_id),
 
-            otp
-        )     
+    #         otp
+    #     )     
 
     # =====================================
     # DETECT INTENT
@@ -511,6 +512,24 @@ def route_message(
 
         return view_ride_offers(
             session
+        )
+    
+    # =====================================
+    # VIEW RIDE OFFERS
+    # =====================================
+    
+    if intent in [
+
+        REQUEST_RIDE_OTP,
+
+        VERIFY_RIDE_OTP
+    ]:
+
+        return handle_ride_completion_flow(
+
+            session,
+
+            message
         )
 
     # =====================================
