@@ -44,7 +44,9 @@ def send_passenger_payment_success_message(
             f"₦{booking.final_price}\n\n"
 
             "You can now call or "
-            "chat with your driver."
+            "chat with your driver. After ride completion, "
+            "an otp will be sent to you by the driver for verification. "
+            "Kindly provide the otp to the driver."
         )
     )
 
@@ -86,6 +88,9 @@ def send_rider_payment_success_message(
             f"₦{booking.final_price}\n\n"
 
             "You can now call or "
-            "chat with the passenger."
+            "chat with the passenger. "
+            "After ride completion request and "
+            "verify otp using the booking ID: "
+            f"{booking.booking_id} to receive your payment"
         )
     )

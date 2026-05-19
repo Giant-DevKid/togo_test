@@ -1,5 +1,6 @@
 import uuid
 from django.db import models
+from decimal import Decimal, ROUND_HALF_UP
 
 
 from account.models import User
@@ -160,7 +161,15 @@ class RideBooking(models.Model):
         on_delete=models.SET_NULL,
         related_name="selected_bookings"
     )
+    booking_id = models.CharField(
+        max_length=50,
 
+        unique=True,
+
+        editable=False,
+
+        db_index=True
+    )
     pickup_name = models.CharField(
         max_length=255
     )
@@ -227,6 +236,203 @@ class RideBooking(models.Model):
         auto_now_add=True
     )
 
+    # =====================================
+    # PLATFORM SETTINGS
+    # =====================================
+
+    PASSENGER_SERVICE_RATE = Decimal(
+        "0.05"
+    )
+
+    RIDER_COMMISSION_RATE = Decimal(
+        "0.05"
+    )
+
+    # =====================================
+    # STRING REPRESENTATION
+    # =====================================
+
+    def __str__(self):
+
+        return f"{self.booking_id}"
+
+    # =====================================
+    # GENERATE BOOKING ID
+    # =====================================
+
+    def save(
+        self,
+        *args,
+        **kwargs
+    ):
+
+        if not self.booking_id:
+
+            from rideshare.utils.id_generator import (
+                generate_booking_id
+            )
+
+            booking_id = (
+                generate_booking_id()
+            )
+
+            while RideBooking.objects.filter(
+                booking_id=booking_id
+            ).exists():
+
+                booking_id = (
+                    generate_booking_id()
+                )
+
+            self.booking_id = booking_id
+
+        super().save(
+            *args,
+            **kwargs
+        )
+
+    # =====================================
+    # GET BASE RIDE PRICE
+    # =====================================
+
+    def get_base_price(self):
+
+        """
+        Returns the rider/base price.
+        Uses final_price if rider
+        negotiated price exists.
+        """
+
+        return (
+
+            self.final_price
+
+            or
+
+            self.estimated_price
+        )
+    
+    # =====================================
+    # PASSENGER SERVICE FEE
+    # =====================================
+
+    def get_passenger_service_charge(
+        self
+    ):
+
+        base_price = self.get_base_price()
+
+        total = (
+
+            Decimal(base_price)
+
+            *
+
+            self.PASSENGER_SERVICE_RATE
+        )
+        return total.quantize(
+
+            Decimal("0.01"),
+
+            rounding=ROUND_HALF_UP
+        )
+
+
+    # =====================================
+    # RIDER COMMISSION
+    # =====================================
+
+    def get_rider_commission(
+        self
+    ):
+
+        base_price = self.get_base_price()
+
+        total = (
+
+            Decimal(base_price)
+
+            *
+
+            self.RIDER_COMMISSION_RATE
+        )
+
+        return total.quantize(
+
+            Decimal("0.01"),
+
+            rounding=ROUND_HALF_UP
+        )
+    
+    # =====================================
+    # TOTAL PASSENGER PAYMENT
+    # =====================================
+
+    def get_total_price(self):
+
+        base_price = self.get_base_price()
+
+        total = (
+
+            Decimal(base_price)
+
+            +
+
+            self.get_passenger_service_charge()
+        )
+
+        return total.quantize(
+
+            Decimal("0.01"),
+
+            rounding=ROUND_HALF_UP
+        )
+    
+    # =====================================
+    # RIDER PAYOUT
+    # =====================================
+
+    def get_rider_payout(self):
+
+        base_price = self.get_base_price()
+
+        total = (
+
+            Decimal(base_price)
+
+            -
+
+            self.get_rider_commission()
+        )
+
+        return total.quantize(
+
+            Decimal("0.01"),
+
+            rounding=ROUND_HALF_UP
+        )
+    
+    # =====================================
+    # PLATFORM TOTAL EARNING
+    # =====================================
+
+    def get_platform_earning(self):
+
+        total =  (
+
+            self.get_passenger_service_charge()
+
+            +
+
+            self.get_rider_commission()
+        )
+
+        return total.quantize(
+
+            Decimal("0.01"),
+
+            rounding=ROUND_HALF_UP
+        )
 
 class RideBookingResponse(models.Model):
 

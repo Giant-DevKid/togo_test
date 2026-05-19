@@ -1,4 +1,5 @@
 import re
+from decimal import Decimal
 
 from rideshare.models import (
     RideBookingResponse,
@@ -73,7 +74,7 @@ def view_ride_requests(
             f"{booking.destination_name}\n"
 
             f"Price: ₦"
-            f"{booking.estimated_price}\n"
+            f"{booking.get_rider_payout()}"
 
             f"Request ID: {req.id}\n\n"
         )
@@ -160,7 +161,7 @@ def accept_ride_request(
             f"{session.user.first_name}\n"
 
             f"Price: ₦"
-            f"{booking.estimated_price}\n\n"
+            f"{booking.get_total_price()}\n\n"
 
             "Say:\n"
             "• view ride offers"
@@ -248,18 +249,31 @@ def offer_new_price(
     # =====================================
     # UPDATE RESPONSE
     # =====================================
+    base_price = Decimal(price)
+
+    service_charge = (
+        base_price
+        * Decimal("0.05")
+    )
+
+    total_price = (
+        base_price
+        + service_charge
+    ).quantize(Decimal("0.01"))
+
 
     ride_response.response = (
         "ACCEPTED"
     )
 
     ride_response.updated_price = (
-        price
+        total_price
     )
 
     ride_response.save()
 
     booking = ride_response.booking
+    
 
     # =====================================
     # NOTIFY PASSENGER
@@ -275,7 +289,7 @@ def offer_new_price(
             f"Driver: "
             f"{session.user.first_name}\n"
 
-            f"New Price: ₦{price}\n\n"
+            f"New Price: ₦{total_price}\n\n"
 
             "Say:\n"
             "• view ride offers"
@@ -287,7 +301,7 @@ def offer_new_price(
         session.phone_number,
 
         (
-            f"New offer sent: ₦{price} ✅"
+            f"New offer sent: ₦{total_price} ✅"
         )
     )
 
@@ -449,13 +463,31 @@ def view_ride_offers(
         start=1
     ):
 
-        price = (
+        # price = (
+
+        #     response.updated_price
+
+        #     or
+
+        #     booking.estimated_price
+        # )
+        base_price = (
 
             response.updated_price
 
             or
 
             booking.estimated_price
+        )
+
+        service_charge = (
+            base_price * Decimal("0.05")
+        )
+
+        price = (
+            base_price + service_charge
+        ).quantize(
+            Decimal("0.05")
         )
 
         message += (
@@ -707,7 +739,7 @@ def handle_rider_selection(
             f"{booking.destination_name}\n\n"
 
             f"Final Price: "
-            f"₦{booking.final_price}"
+            f"₦{booking.get_rider_payout()}"
         )
     )
 
@@ -724,7 +756,7 @@ def handle_rider_selection(
             f"Driver: "
             f"{selected_response.rider.first_name}\n"
 
-            f"Price: ₦{booking.final_price}\n\n"
+            f"Price: ₦{booking.get_total_price()}\n\n"
 
             "Reply with:\n\n"
 

@@ -43,7 +43,7 @@ def calculate_price(distance_meters):
 
     base_fare = 1000
 
-    per_km_rate = 250
+    per_km_rate = 125
 
     total = base_fare + (
         distance_km * per_km_rate
@@ -637,6 +637,9 @@ def notify_riders(
             (
                 "🚘 New Ride Request\n\n"
 
+                f"Booking ID: "
+                f"{booking.booking_id}\n\n"
+
                 f"Request ID: "
                 f"{response.id}\n\n"
 
@@ -647,7 +650,9 @@ def notify_riders(
                 f"{booking.destination_name}\n"
 
                 f"Estimated Price: "
-                f"₦{booking.estimated_price}\n\n"
+                f"₦{booking.get_base_price()}\n\n"
+                # f"Estimated Price: "
+                # f"₦{booking.estimated_price}\n\n"
 
                 "You can reply:\n\n"
 

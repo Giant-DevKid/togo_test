@@ -28,7 +28,7 @@ def initialize_paystack_payment(
         ),
 
         "amount": int(
-            booking.final_price * 100
+            booking.get_total_price() * 100
         ),
 
         "callback_url": (
@@ -62,7 +62,7 @@ def initialize_paystack_payment(
 
         rider=booking.selected_rider,
 
-        amount=booking.final_price,
+        amount=booking.get_total_price(),
 
         provider="PAYSTACK",
 

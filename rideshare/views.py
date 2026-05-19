@@ -32,7 +32,8 @@ from conversation.services.notifications import (
 
     send_rider_payment_success_message
 )
-
+from conversation.models import ConversationSession
+from conversation.services.session_service import reset_session
 
 @csrf_exempt
 def paystack_webhook(
@@ -164,6 +165,26 @@ def paystack_webhook(
         booking.save()
 
     # =====================================
+    # RESET PASSENGER SESSION
+    # =====================================
+
+    passenger_session = (
+
+        ConversationSession.objects
+        .filter(
+            user=booking.passenger
+        )
+        .first()
+    )
+
+    if passenger_session:
+
+        reset_session(
+            passenger_session
+        )
+
+
+    # =====================================
     # NOTIFY PASSENGER
     # =====================================
     
@@ -171,6 +192,26 @@ def paystack_webhook(
     send_passenger_payment_success_message(
         booking
     )
+
+    # =====================================
+    # RESET PASSENGER SESSION
+    # =====================================
+
+    rider_session = (
+
+        ConversationSession.objects
+        .filter(
+            user=booking.selected_rider
+        )
+        .first()
+    )
+
+    if rider_session:
+
+        reset_session(
+            rider_session
+        )
+
 
     # =====================================
     # NOTIFY RIDER
