@@ -86,3 +86,16 @@ def initialize_paystack_payment(
     )
 
     return payment
+
+
+def release_rider_payment(
+    booking
+):
+
+    payment = booking.payment
+
+    
+
+    print(
+        "Release rider payout"
+    )

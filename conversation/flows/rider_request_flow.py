@@ -19,7 +19,7 @@ from conversation.state.rider_request_steps import (
 from conversation.state.payment_steps import *
 
 # =========================================
-# VIEW MATCHING REQUESTS
+# VIEW MATCHING REQUESTS FOR RIDERS
 # =========================================
 def view_ride_requests(
     session

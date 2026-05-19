@@ -1,5 +1,7 @@
 import os
 import requests
+import random
+from django.utils import timezone
 from geopy.distance import geodesic
 
 from rideshare.models import (
@@ -656,4 +658,33 @@ def notify_riders(
                 f"• offer {response.id} 4500"
             )
         )
+
+
+def generate_ride_otp(
+    booking
+):
+
+    otp = str(
+
+        random.randint(
+            1000,
+            9999
+        )
+    )
+
+    booking.ride_completion_otp = (
+        otp
+    )
+
+    booking.otp_generated_at = (
+        timezone.now()
+    )
+
+    booking.status = (
+        "OTP_PENDING"
+    )
+
+    booking.save()
+
+    return otp
 

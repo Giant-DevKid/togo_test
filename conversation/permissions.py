@@ -9,7 +9,7 @@ ROLE_PERMISSIONS = {
         "CANCEL_BOOKING",
 
         "VIEW_RIDES",
-        
+
         "VIEW_RIDE_OFFERS",
 
         "SELECT_RIDER"
@@ -32,6 +32,10 @@ ROLE_PERMISSIONS = {
         "REJECT_BOOKING",
 
         "UPDATE_BOOKING_PRICE",
+        
+        "REQUEST_RIDE_OTP",
+
+        "VERIFY_RIDE_OTP",
 
         "CREATE_VEHICLE",
 

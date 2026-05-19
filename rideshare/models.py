@@ -138,10 +138,9 @@ class RideBooking(models.Model):
 
         ("CONFIRMED", "Confirmed"),
 
-        (
-            "OTP_VERIFICATION",
-            "OTP Verification"
-        ),
+        ("IN_PROGRESS", "In Progress"),
+
+        ("OTP_PENDING", "OTP Pending"),
 
         ("COMPLETED", "Completed"),
 
@@ -200,6 +199,28 @@ class RideBooking(models.Model):
         max_length=50,
         choices=STATUS_CHOICES,
         default="PENDING"
+    )
+    ride_completion_otp = models.CharField(
+
+        max_length=10,
+
+        null=True,
+
+        blank=True
+    )
+
+    otp_generated_at = models.DateTimeField(
+
+        null=True,
+
+        blank=True
+    )
+
+    otp_verified_at = models.DateTimeField(
+
+        null=True,
+
+        blank=True
     )
 
     created_at = models.DateTimeField(

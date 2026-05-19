@@ -60,6 +60,14 @@ from conversation.state.payment_steps import (
     AWAITING_PAYMENT
 )
 
+
+from conversation.flows.ride_completion_flow import (
+
+    request_ride_otp,
+
+    verify_ride_otp
+)
+
 from conversation.flows.payment_flow import (
     handle_payment_flow
 )
@@ -276,7 +284,98 @@ def route_message(
 
     if driver_action_response:
 
-        return driver_action_response       
+        return driver_action_response  
+
+    # =====================================
+    # REQUEST OTP
+    # =====================================
+
+    if normalized_message.startswith(
+        "request otp"
+    ):
+
+        parts = normalized_message.split()
+
+        if len(parts) != 3:
+
+            return send_text(
+
+                session.phone_number,
+
+                (
+                    "Example:\n\n"
+
+                    "request otp 31"
+                )
+            )
+
+        booking_id = parts[2]
+
+        if not booking_id.isdigit():
+
+            return send_text(
+
+                session.phone_number,
+
+                (
+                    "Invalid booking ID."
+                )
+            )
+
+        return request_ride_otp(
+
+            session,
+
+            int(booking_id)
+        )
+
+
+    # =====================================
+    # VERIFY OTP
+    # =====================================
+
+    if normalized_message.startswith(
+        "verify otp"
+    ):
+
+        parts = normalized_message.split()
+
+        if len(parts) != 4:
+
+            return send_text(
+
+                session.phone_number,
+
+                (
+                    "Example:\n\n"
+
+                    "verify otp 31 4421"
+                )
+            )
+
+        booking_id = parts[2]
+
+        otp = parts[3]
+
+        if not booking_id.isdigit():
+
+            return send_text(
+
+                session.phone_number,
+
+                (
+                    "Invalid booking ID."
+                )
+            )
+
+        return verify_ride_otp(
+
+            session,
+
+            int(booking_id),
+
+            otp
+        )     
 
     # =====================================
     # DETECT INTENT
