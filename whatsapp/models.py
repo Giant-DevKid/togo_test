@@ -14,8 +14,14 @@ class ConversationSession(models.Model):
     ]
 
     phone_number = models.CharField(max_length=20, unique=True)
-    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="whatsapp_sessions")
-    state = models.CharField( max_length=50, choices=STATES, default="START")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="whatsapp_sessions",
+    )
+    state = models.CharField(max_length=50, choices=STATES, default="START")
 
     context = models.JSONField(default=dict)
 

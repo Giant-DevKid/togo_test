@@ -1,56 +1,31 @@
 import re
-from rideshare.models import (
-    RideBooking
-)
+from rideshare.models import RideBooking
 
-from rideshare.services import (
-    generate_ride_otp
-)
+from rideshare.services import generate_ride_otp
 from django.utils import timezone
 
 
-from conversation.services.message_service import (
-    send_text
-)
+from conversation.services.message_service import send_text
 
-from rideshare.utils.paystack_service import (
-    release_rider_payment
-)
+from rideshare.utils.paystack_service import release_rider_payment
 
 from conversation.ai.extractors.ride_completion_extractor import (
-    extract_ride_completion_data
+    extract_ride_completion_data,
 )
 
 
-
-def get_active_booking(
-    rider
-):
+def get_active_booking(rider):
 
     return (
-
-        RideBooking.objects
-        .filter(
-
-            selected_rider=rider,
-
-            status__in=[
-
-                "CONFIRMED",
-
-                "IN_PROGRESS",
-
-                "OTP_PENDING"
-            ]
+        RideBooking.objects.filter(
+            selected_rider=rider, status__in=["CONFIRMED", "IN_PROGRESS", "OTP_PENDING"]
         )
         .order_by("-created_at")
         .first()
     )
 
-def handle_request_otp(
-    session,
-    booking_id=None
-):
+
+def handle_request_otp(session, booking_id=None):
 
     booking = None
 
@@ -60,18 +35,11 @@ def handle_request_otp(
 
     if booking_id:
 
-        booking = (
-
-            RideBooking.objects
-            .filter(
-
-                # id=booking_id,
-                booking_id=booking_id,
-
-                selected_rider=session.user
-            )
-            .first()
-        )
+        booking = RideBooking.objects.filter(
+            # id=booking_id,
+            booking_id=booking_id,
+            selected_rider=session.user,
+        ).first()
 
     # =====================================
     # AUTO FIND ACTIVE BOOKING
@@ -79,80 +47,37 @@ def handle_request_otp(
 
     else:
 
-        booking = get_active_booking(
-            session.user
-        )
+        booking = get_active_booking(session.user)
 
     if not booking:
 
-        return send_text(
+        return send_text(session.phone_number, ("No active ride found."))
 
-            session.phone_number,
+    otp = generate_ride_otp(booking)
 
-            (
-                "No active ride found."
-            )
-        )
+    send_text(booking.passenger.phone_no, ("🔐 Ride Completion OTP\n\n" f"OTP: {otp}"))
 
-    otp = generate_ride_otp(
-        booking
-    )
+    return send_text(session.phone_number, ("OTP sent to passenger."))
 
-    send_text(
 
-        booking.passenger.phone_no,
-
-        (
-            "🔐 Ride Completion OTP\n\n"
-
-            f"OTP: {otp}"
-        )
-    )
-
-    return send_text(
-
-        session.phone_number,
-
-        (
-            "OTP sent to passenger."
-        )
-    )
-
-def handle_verify_otp(
-    session,
-    booking_id=None,
-    otp=None
-):
+def handle_verify_otp(session, booking_id=None, otp=None):
 
     booking = None
 
     if booking_id:
 
-        booking = (
-
-            RideBooking.objects
-            .filter(
-
-                # id=booking_id,
-                booking_id=booking_id,
-
-                selected_rider=session.user,
-
-                status="OTP_PENDING"
-            )
-            .first()
-        )
+        booking = RideBooking.objects.filter(
+            # id=booking_id,
+            booking_id=booking_id,
+            selected_rider=session.user,
+            status="OTP_PENDING",
+        ).first()
 
     else:
 
         booking = (
-
-            RideBooking.objects
-            .filter(
-
-                selected_rider=session.user,
-
-                status="OTP_PENDING"
+            RideBooking.objects.filter(
+                selected_rider=session.user, status="OTP_PENDING"
             )
             .order_by("-created_at")
             .first()
@@ -160,66 +85,27 @@ def handle_verify_otp(
 
     if not booking:
 
-        return send_text(
-
-            session.phone_number,
-
-            (
-                "No OTP pending ride found."
-            )
-        )
+        return send_text(session.phone_number, ("No OTP pending ride found."))
 
     if booking.ride_completion_otp != otp:
 
-        return send_text(
+        return send_text(session.phone_number, "Invalid OTP.")
 
-            session.phone_number,
+    booking.status = "COMPLETED"
 
-            "Invalid OTP."
-        )
-
-    booking.status = (
-        "COMPLETED"
-    )
-
-    booking.otp_verified_at = (
-        timezone.now()
-    )
+    booking.otp_verified_at = timezone.now()
 
     booking.save()
 
-    release_rider_payment(
-        booking
-    )
+    release_rider_payment(booking)
+
+    send_text(booking.passenger.phone_no, ("✅ Ride completed."))
 
     send_text(
-
-        booking.passenger.phone_no,
-
-        (
-            "✅ Ride completed."
-        )
+        booking.selected_rider.phone_no, ("✅ Ride completed.\n\n" "Payout processing.")
     )
 
-    send_text(
-
-        booking.selected_rider.phone_no,
-
-        (
-            "✅ Ride completed.\n\n"
-
-            "Payout processing."
-        )
-    )
-
-    return send_text(
-
-        session.phone_number,
-
-        (
-            "Ride completed successfully."
-        )
-    )
+    return send_text(session.phone_number, ("Ride completed successfully."))
 
 
 # def handle_ride_completion_flow(
@@ -284,10 +170,7 @@ def handle_verify_otp(
 #     )
 
 
-def handle_ride_completion_flow(
-    session,
-    message
-):
+def handle_ride_completion_flow(session, message):
 
     extracted = extract_ride_completion_data(message)
 
@@ -301,12 +184,7 @@ def handle_ride_completion_flow(
 
     if booking_id and not re.match(r"^RID-[A-Z0-9]{6}$", booking_id):
 
-        return send_text(
-
-            session.phone_number,
-
-            "Invalid booking reference."
-        )
+        return send_text(session.phone_number, "Invalid booking reference.")
 
     # =====================================
     # REQUEST OTP
@@ -314,10 +192,7 @@ def handle_ride_completion_flow(
 
     if action == "REQUEST_OTP":
 
-        return handle_request_otp(
-            session,
-            booking_id
-        )
+        return handle_request_otp(session, booking_id)
 
     # =====================================
     # VERIFY OTP
@@ -325,13 +200,6 @@ def handle_ride_completion_flow(
 
     if action == "VERIFY_OTP":
 
-        return handle_verify_otp(
-            session,
-            booking_id,
-            otp
-        )
+        return handle_verify_otp(session, booking_id, otp)
 
-    return send_text(
-        session.phone_number,
-        "I couldn't understand your request."
-    )
+    return send_text(session.phone_number, "I couldn't understand your request.")

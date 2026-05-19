@@ -1,102 +1,60 @@
 from conversation.flows.onboarding_flow import (
     start_onboarding_flow,
-    handle_onboarding_flow
+    handle_onboarding_flow,
 )
 
-from conversation.flows.vehicle_flow import (
-    handle_vehicle_flow
-)
+from conversation.flows.vehicle_flow import handle_vehicle_flow
 
-from conversation.flows.booking_flow import (
-    handle_booking_flow
-)
+from conversation.flows.booking_flow import handle_booking_flow
 
 from conversation.flows.route_flow import *
 
 from conversation.flows.rider_request_flow import *
 
 
-from conversation.services.response_service import (
-    build_fallback_response
-)
+from conversation.services.response_service import build_fallback_response
 
-from conversation.services.message_service import (
-    send_text
-)
+from conversation.services.message_service import send_text
 
-from conversation.services.session_service import (
-    reset_session
-)
+from conversation.services.session_service import reset_session
 
-from conversation.services.permission_service import (
-    can_access_intent
-)
+from conversation.services.permission_service import can_access_intent
 
-from conversation.services.access_message_service import (
-    get_access_denied_message
-)
+from conversation.services.access_message_service import get_access_denied_message
 
-from conversation.ai.intent.detector import (
-    detect_intent
-)
+from conversation.ai.intent.detector import detect_intent
 
-from conversation.state.onboarding_steps import (
-    ONBOARDING_FLOW
-)
+from conversation.state.onboarding_steps import ONBOARDING_FLOW
 
-from conversation.state.vehicle_steps import (
-    VEHICLE_FLOW
-)
+from conversation.state.vehicle_steps import VEHICLE_FLOW
+
+from conversation.state.bank_steps import BANK_FLOW, BANK_UPDATE_FLOW
 
 from conversation.state.route_steps import *
 
-from conversation.state.booking_steps import (
-    BOOKING_FLOW
-)
-from conversation.state.payment_steps import (
-
-    PAYMENT_FLOW,
-
-    AWAITING_PAYMENT
-)
+from conversation.state.booking_steps import BOOKING_FLOW
+from conversation.state.payment_steps import PAYMENT_FLOW, AWAITING_PAYMENT
 
 
-from conversation.flows.ride_completion_flow import (
+from conversation.flows.ride_completion_flow import handle_ride_completion_flow
 
-    # request_ride_otp,
-
-    # verify_ride_otp,
-    handle_ride_completion_flow
+from conversation.flows.bank_flow import (
+    start_bank_flow,
+    handle_bank_flow,
+    view_bank_account,
+    start_update_bank_flow,
 )
 
-from conversation.flows.payment_flow import (
-    handle_payment_flow
-)
+from conversation.flows.payment_flow import handle_payment_flow
 
 from conversation.ai.intent.intents import *
 
+GLOBAL_EXIT_COMMANDS = ["cancel", "stop", "exit", "reset"]
 
 
-GLOBAL_EXIT_COMMANDS = [
+def route_message(session, message):
 
-    "cancel",
-
-    "stop",
-
-    "exit",
-
-    "reset"
-]
-
-
-def route_message(
-    session,
-    message
-):
-
-    normalized_message = (
-        message.strip().lower()
-    )
+    normalized_message = message.strip().lower()
 
     # =====================================
     # EXIT COMMANDS
@@ -106,22 +64,13 @@ def route_message(
 
         reset_session(session)
 
-        return send_text(
-
-            session.phone_number,
-
-            "Current action cancelled."
-        )
+        return send_text(session.phone_number, "Current action cancelled.")
 
     # =====================================
     # ACTIVE FLOW CONTINUATION FIRST
     # =====================================
 
-    active_flow = (
-        session.context.get(
-            "active_flow"
-        )
-    )
+    active_flow = session.context.get("active_flow")
 
     # =====================================
     # CONTINUE ONBOARDING FLOW
@@ -129,10 +78,7 @@ def route_message(
 
     if active_flow == ONBOARDING_FLOW:
 
-        return handle_onboarding_flow(
-            session,
-            message
-        )
+        return handle_onboarding_flow(session, message)
 
     # =====================================
     # START ONBOARDING
@@ -140,11 +86,7 @@ def route_message(
 
     if not session.user:
 
-        return start_onboarding_flow(
-            session
-        )
-
-        
+        return start_onboarding_flow(session)
 
     # =====================================
     # VEHICLE FLOW
@@ -152,12 +94,15 @@ def route_message(
 
     if active_flow == VEHICLE_FLOW:
 
-        return handle_vehicle_flow(
+        return handle_vehicle_flow(session, message, None)
 
-            session,
-            message,
-            None
-        )
+    # =====================================
+    # BANK FLOW
+    # =====================================
+
+    if active_flow in [BANK_FLOW, BANK_UPDATE_FLOW]:
+
+        return handle_bank_flow(session, message)
 
     # =====================================
     # BOOKING FLOW
@@ -165,31 +110,19 @@ def route_message(
 
     if active_flow == BOOKING_FLOW:
 
-        return handle_booking_flow(
+        return handle_booking_flow(session, message, None)
 
-            session,
-            message,
-            None
-        )
-    
     # =====================================
     # RIDE OFFER FLOW
     # =====================================
 
     if active_flow == RIDE_OFFER_FLOW:
 
-        step = session.context.get(
-            "step"
-        )
+        step = session.context.get("step")
 
         if step == SELECTING_RIDER:
 
-            return handle_rider_selection(
-
-                session,
-
-                message
-            )
+            return handle_rider_selection(session, message)
 
     # =====================================
     # RIDE OFFER PYMENT FLOW
@@ -199,18 +132,11 @@ def route_message(
     print("SESSION CONTEXT:", session.context)
     if active_flow == PAYMENT_FLOW:
 
-        step = session.context.get(
-            "step"
-        )
+        step = session.context.get("step")
 
         if step == AWAITING_PAYMENT:
 
-            return handle_payment_flow(
-
-                session,
-
-                message
-            )    
+            return handle_payment_flow(session, message)
 
     # =====================================
     # ROUTE FLOW
@@ -218,74 +144,45 @@ def route_message(
 
     if active_flow == ROUTE_FLOW:
 
-        step = session.context.get(
-            "step"
-        )
+        step = session.context.get("step")
 
         if step == ASK_ROUTE_START:
 
-            return handle_route_start(
-                session,
-                message
-            )
+            return handle_route_start(session, message)
 
         if step == ASK_ROUTE_DESTINATION:
 
-            return handle_route_destination(
-                session,
-                message
-            )
+            return handle_route_destination(session, message)
 
         if step == ASK_ROUTE_TO_UPDATE:
 
-            return handle_route_selection(
-                session,
-                message
-            )
+            return handle_route_selection(session, message)
 
         if step == ASK_NEW_ROUTE_START:
 
-            return handle_new_route_start(
-                session,
-                message
-            )
+            return handle_new_route_start(session, message)
 
         if step == ASK_NEW_ROUTE_DESTINATION:
 
-            return handle_new_route_destination(
-                session,
-                message
-            )
+            return handle_new_route_destination(session, message)
 
         if step == ASK_ROUTE_TO_DELETE:
 
-            return handle_route_delete_selection(
-                session,
-                message
-            )
+            return handle_route_delete_selection(session, message)
 
         if step == CONFIRM_ROUTE_DELETE:
 
-            return handle_route_delete_confirmation(
-                session,
-                message
-            )
-        
+            return handle_route_delete_confirmation(session, message)
 
     # =====================================
     # DRIVER REQUEST ACTIONS
     # =====================================
 
-    driver_action_response = (
-        handle_driver_request_action(
-            session,
-            message
-        )
-    )
+    driver_action_response = handle_driver_request_action(session, message)
 
     if driver_action_response:
 
-        return driver_action_response  
+        return driver_action_response
 
     # =====================================
     # REQUEST OTP
@@ -329,7 +226,6 @@ def route_message(
 
     #         int(booking_id)
     #     )
-
 
     # =====================================
     # VERIFY OTP
@@ -376,15 +272,13 @@ def route_message(
     #         int(booking_id),
 
     #         otp
-    #     )     
+    #     )
 
     # =====================================
     # DETECT INTENT
     # =====================================
 
-    intent = detect_intent(
-        message
-    )
+    intent = detect_intent(message)
 
     print("AI INTENT:", intent)
 
@@ -392,23 +286,10 @@ def route_message(
     # PERMISSION CHECK
     # =====================================
 
-    if not can_access_intent(
-
-        session.user,
-
-        intent
-    ):
+    if not can_access_intent(session.user, intent):
 
         return send_text(
-
-            session.phone_number,
-
-            get_access_denied_message(
-
-                session.user,
-
-                intent
-            )
+            session.phone_number, get_access_denied_message(session.user, intent)
         )
 
     # =====================================
@@ -417,9 +298,7 @@ def route_message(
 
     if intent == VIEW_RIDES:
 
-        return view_ride_offers(
-            session
-        )
+        return view_ride_offers(session)
 
     # =====================================
     # ROUTE FEATURES
@@ -427,72 +306,50 @@ def route_message(
 
     if intent == CREATE_ROUTE:
 
-        return start_route_flow(
-            session,
-            message
-        )
+        return start_route_flow(session, message)
 
     if intent == VIEW_ROUTES:
 
-        return view_routes(
-            session
-        )
+        return view_routes(session)
 
     if intent == UPDATE_ROUTE:
 
-        return start_update_route_flow(
-            session
-        )
+        return start_update_route_flow(session)
 
     if intent == DELETE_ROUTE:
 
-        return start_delete_route_flow(
-            session
-        )
+        return start_delete_route_flow(session)
 
     # =====================================
     # VEHICLE FEATURES
     # =====================================
 
-    if intent in [
+    if intent in [VIEW_VEHICLE, CREATE_VEHICLE, UPDATE_VEHICLE]:
 
-        VIEW_VEHICLE,
+        return handle_vehicle_flow(session, message, intent)
 
-        CREATE_VEHICLE,
+    # =====================================
+    # BANK FLOW START
+    # =====================================
+    if intent == VIEW_BANK_ACCOUNT:
 
-        UPDATE_VEHICLE
-    ]:
+        return view_bank_account(session)
 
-        return handle_vehicle_flow(
+    if intent == UPDATE_BANK_ACCOUNT:
 
-            session,
+        return start_update_bank_flow(session)
 
-            message,
+    if intent == ADD_BANK_ACCOUNT:
 
-            intent
-        )
+        return start_bank_flow(session)
 
     # =====================================
     # BOOKING FEATURES
     # =====================================
 
-    if intent in [
+    if intent in [BOOK_RIDE, UPDATE_BOOKING, CANCEL_BOOKING]:
 
-        BOOK_RIDE,
-
-        UPDATE_BOOKING,
-
-        CANCEL_BOOKING
-    ]:
-
-        return handle_booking_flow(
-
-            session,
-
-            message,
-
-            intent
-        )
+        return handle_booking_flow(session, message, intent)
 
     # =====================================
     # RIDER REQUESTS
@@ -500,47 +357,26 @@ def route_message(
 
     if intent == VIEW_RIDE_REQUESTS:
 
-        return view_ride_requests(
-            session
-        )
-    
+        return view_ride_requests(session)
+
     # =====================================
     # VIEW RIDE OFFERS
     # =====================================
 
     if intent == VIEW_RIDE_OFFERS:
 
-        return view_ride_offers(
-            session
-        )
-    
+        return view_ride_offers(session)
+
     # =====================================
     # VIEW RIDE OFFERS
     # =====================================
-    
-    if intent in [
 
-        REQUEST_RIDE_OTP,
+    if intent in [REQUEST_RIDE_OTP, VERIFY_RIDE_OTP]:
 
-        VERIFY_RIDE_OTP
-    ]:
-
-        return handle_ride_completion_flow(
-
-            session,
-
-            message
-        )
+        return handle_ride_completion_flow(session, message)
 
     # =====================================
     # FALLBACK
     # =====================================
 
-    return send_text(
-
-        session.phone_number,
-
-        build_fallback_response(
-            session.user
-        )
-    )
+    return send_text(session.phone_number, build_fallback_response(session.user))

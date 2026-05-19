@@ -3,6 +3,7 @@ from .models import DriverRoute, RideBooking, RideBookingResponse
 
 # Register your models here.
 
+
 @admin.register(RideBooking)
 class RideBookingAdmin(admin.ModelAdmin):
 
@@ -15,5 +16,7 @@ class RideBookingAdmin(admin.ModelAdmin):
         "estimated_price",
         "created_at",
     )
+
+
 admin.site.register(DriverRoute)
 admin.site.register(RideBookingResponse)

@@ -1,85 +1,52 @@
-from conversation.ai.extractors.booking_extractor import (
-    extract_booking_data
-)
+from conversation.ai.extractors.booking_extractor import extract_booking_data
 
-from conversation.ai.extractors.update_extractor import (
-    extract_update_data
-)
+from conversation.ai.extractors.update_extractor import extract_update_data
 
-from conversation.services.message_service import (
-    send_text
-)
+from conversation.services.message_service import send_text
 
-from conversation.services.session_service import (
-    reset_session
-)
+from conversation.services.session_service import reset_session
 
 from conversation.state.booking_steps import (
     BOOKING_FLOW,
     AWAITING_PICKUP,
-    AWAITING_DESTINATION
+    AWAITING_DESTINATION,
 )
 
-from rideshare.models import (
-    RideBooking
-)
+from rideshare.models import RideBooking
 
 from rideshare.services import (
     geocode_location,
     get_route,
     create_booking,
     find_matching_routes,
-    notify_riders
+    notify_riders,
 )
-
 
 
 # =========================================
 # UPDATE BOOKING
 # =========================================
-def update_booking_flow(
-    session,
-    message
-):
+def update_booking_flow(session, message):
 
-    extracted = (
-        extract_update_data(
-            message
-        )
-    )
+    extracted = extract_update_data(message)
 
     booking = (
-        RideBooking.objects
-        .filter(
-            passenger=session.user,
-            status="PENDING"
-        )
+        RideBooking.objects.filter(passenger=session.user, status="PENDING")
         .order_by("-created_at")
         .first()
     )
 
     if not booking:
 
-        return send_text(
+        return send_text(session.phone_number, "No active booking found")
 
-            session.phone_number,
+    pickup_name = extracted.get("pickup_name")
 
-            "No active booking found"
-        )
-
-    pickup_name = extracted.get(
-        "pickup_name"
-    )
-
-    destination_name = extracted.get(
-        "destination_name"
-    )
+    destination_name = extracted.get("destination_name")
 
     if pickup_name:
 
-        pickup = geocode_location(
-            pickup_name
-        )
+        pickup = geocode_location(pickup_name)
 
         booking.pickup_name = pickup_name
         booking.pickup_lat = pickup["lat"]
@@ -87,104 +54,59 @@ def update_booking_flow(
 
     else:
 
-        pickup = {
-
-            "lat": booking.pickup_lat,
-            "lng": booking.pickup_lng
-        }
+        pickup = {"lat": booking.pickup_lat, "lng": booking.pickup_lng}
 
     if destination_name:
 
-        destination = geocode_location(
-            destination_name
-        )
+        destination = geocode_location(destination_name)
 
-        booking.destination_name = (
-            destination_name
-        )
+        booking.destination_name = destination_name
 
-        booking.destination_lat = (
-            destination["lat"]
-        )
+        booking.destination_lat = destination["lat"]
 
-        booking.destination_lng = (
-            destination["lng"]
-        )
+        booking.destination_lng = destination["lng"]
 
     else:
 
-        destination = {
-
-            "lat":
-                booking.destination_lat,
-
-            "lng":
-                booking.destination_lng
-        }
+        destination = {"lat": booking.destination_lat, "lng": booking.destination_lng}
 
     route_data = get_route(
-
-        pickup["lng"],
-        pickup["lat"],
-
-        destination["lng"],
-        destination["lat"]
+        pickup["lng"], pickup["lat"], destination["lng"], destination["lat"]
     )
 
-    booking.distance_meters = (
-        route_data["distance"]
-    )
+    booking.distance_meters = route_data["distance"]
 
-    booking.route_geometry = (
-        route_data["geometry"]
-    )
+    booking.route_geometry = route_data["geometry"]
 
-    booking.encoded_polyline = (
-        route_data["geometry"]
-    )
+    booking.encoded_polyline = route_data["geometry"]
 
     booking.save()
 
     return send_text(
-
         session.phone_number,
-
         (
             "Ride updated successfully ✅\n\n"
-
             f"Pickup: "
             f"{booking.pickup_name}\n"
-
             f"Destination: "
             f"{booking.destination_name}"
-        )
+        ),
     )
 
 # =========================================
 # CANCEL BOOKING
 # =========================================
-def cancel_booking_flow(
-    session
-):
+def cancel_booking_flow(session):
 
     booking = (
-        RideBooking.objects
-        .filter(
-            passenger=session.user,
-            status="PENDING"
-        )
+        RideBooking.objects.filter(passenger=session.user, status="PENDING")
         .order_by("-created_at")
         .first()
     )
 
     if not booking:
 
-        return send_text(
-
-            session.phone_number,
-
-            "No active booking found"
-        )
+        return send_text(session.phone_number, "No active booking found")
 
     booking.status = "CANCELLED"
 
@@ -192,30 +114,17 @@ def cancel_booking_flow(
 
     reset_session(session)
 
-    return send_text(
-
-        session.phone_number,
-
-        "Booking cancelled successfully ❌"
-    )
+    return send_text(session.phone_number, "Booking cancelled successfully ❌")
 
 
 # =========================================
 # MAIN BOOKING FLOW
 # =========================================
-def handle_booking_flow(
-    session,
-    message,
-    intent
-):
+def handle_booking_flow(session, message, intent):
 
-    active_flow = session.context.get(
-        "active_flow"
-    )
+    active_flow = session.context.get("active_flow")
 
-    step = session.context.get(
-        "step"
-    )
+    step = session.context.get("step")
 
     # =====================================
     # CONTINUE ACTIVE FLOW
@@ -225,17 +134,11 @@ def handle_booking_flow(
 
         if step == AWAITING_PICKUP:
 
-            return handle_pickup_step(
-                session,
-                message
-            )
+            return handle_pickup_step(session, message)
 
         if step == AWAITING_DESTINATION:
 
-            return handle_destination_step(
-                session,
-                message
-            )
+            return handle_destination_step(session, message)
 
     # =====================================
     # NEW BOOKING
@@ -243,10 +146,7 @@ def handle_booking_flow(
 
     if intent == "BOOK_RIDE":
 
-        return start_booking_flow(
-            session,
-            message
-        )
+        return start_booking_flow(session, message)
 
     # =====================================
     # UPDATE BOOKING
@@ -254,10 +154,7 @@ def handle_booking_flow(
 
     if intent == "UPDATE_BOOKING":
 
-        return update_booking_flow(
-            session,
-            message
-        )
+        return update_booking_flow(session, message)
 
     # =====================================
     # CANCEL BOOKING
@@ -265,32 +162,19 @@ def handle_booking_flow(
 
     if intent == "CANCEL_BOOKING":
 
-        return cancel_booking_flow(
-            session
-        )
+        return cancel_booking_flow(session)
 
 
 # =========================================
 # START BOOKING FLOW
 # =========================================
-def start_booking_flow(
-    session,
-    message
-):
+def start_booking_flow(session, message):
 
-    extracted = (
-        extract_booking_data(
-            message
-        )
-    )
+    extracted = extract_booking_data(message)
 
-    pickup_name = extracted.get(
-        "pickup_name"
-    )
+    pickup_name = extracted.get("pickup_name")
 
-    destination_name = extracted.get(
-        "destination_name"
-    )
+    destination_name = extracted.get("destination_name")
 
     # =====================================
     # ASK PICKUP
@@ -299,22 +183,14 @@ def start_booking_flow(
     if not pickup_name:
 
         session.context = {
-
             "active_flow": BOOKING_FLOW,
-
             "step": AWAITING_PICKUP,
-
-            "data": {}
+            "data": {},
         }
 
         session.save()
 
-        return send_text(
-
-            session.phone_number,
-
-            "📍 Where should we pick you up?"
-        )
+        return send_text(session.phone_number, "📍 Where should we pick you up?")
 
     # =====================================
     # ASK DESTINATION
@@ -323,40 +199,22 @@ def start_booking_flow(
     if not destination_name:
 
         session.context = {
-
             "active_flow": BOOKING_FLOW,
-
             "step": AWAITING_DESTINATION,
-
-            "data": {
-                "pickup_name": pickup_name
-            }
+            "data": {"pickup_name": pickup_name},
         }
 
         session.save()
 
-        return send_text(
+        return send_text(session.phone_number, "📍 Where are you going?")
 
-            session.phone_number,
-
-            "📍 Where are you going?"
-        )
-
-    return create_booking_flow(
-
-        session,
-        pickup_name,
-        destination_name
-    )
+    return create_booking_flow(session, pickup_name, destination_name)
 
 
 # =========================================
 # HANDLE PICKUP STEP
 # =========================================
-def handle_pickup_step(
-    session,
-    message
-):
+def handle_pickup_step(session, message):
 
     pickup_name = message.strip()
 
@@ -364,115 +222,72 @@ def handle_pickup_step(
     # VALIDATE PICKUP
     # =====================================
 
-    pickup = geocode_location(
-        pickup_name
-    )
+    pickup = geocode_location(pickup_name)
 
     if not pickup:
 
         return send_text(
-
             session.phone_number,
-
             (
                 "❌ Pickup location not found.\n\n"
-
                 "Please enter a more accurate "
                 "pickup location.\n\n"
-
                 "Example:\n"
                 "Yaba Lagos"
-            )
+            ),
         )
 
     session.context = {
-
         "active_flow": BOOKING_FLOW,
-
         "step": AWAITING_DESTINATION,
-
-        "data": {
-            "pickup_name": pickup_name
-        }
+        "data": {"pickup_name": pickup_name},
     }
 
     session.save()
 
-    return send_text(
-
-        session.phone_number,
-
-        "📍 Where are you going?"
-    )
+    return send_text(session.phone_number, "📍 Where are you going?")
 
 
 # =========================================
 # HANDLE DESTINATION STEP
 # =========================================
-def handle_destination_step(
-    session,
-    message
-):
+def handle_destination_step(session, message):
 
-    pickup_name = (
-        session.context["data"]
-        .get("pickup_name")
-    )
+    pickup_name = session.context["data"].get("pickup_name")
 
-    destination_name = (
-        message.strip()
-    )
+    destination_name = message.strip()
 
     # =====================================
     # VALIDATE DESTINATION
     # =====================================
 
-    destination = geocode_location(
-        destination_name
-    )
+    destination = geocode_location(destination_name)
 
     if not destination:
 
         return send_text(
-
             session.phone_number,
-
             (
                 "❌ Destination location "
                 "not found.\n\n"
-
                 "Please enter a more accurate "
                 "destination.\n\n"
-
                 "Example:\n"
                 "Ikeja Lagos"
-            )
+            ),
         )
 
-    return create_booking_flow(
-
-        session,
-        pickup_name,
-        destination_name
-    )
+    return create_booking_flow(session, pickup_name, destination_name)
 
 
 # =========================================
 # CREATE BOOKING
 # =========================================
-def create_booking_flow(
-    session,
-    pickup_name,
-    destination_name
-):
+def create_booking_flow(session, pickup_name, destination_name):
 
-    pickup = geocode_location(
-        pickup_name
-    )
+    pickup = geocode_location(pickup_name)
 
-    destination = geocode_location(
-        destination_name
-    )
+    destination = geocode_location(destination_name)
 
     # =====================================
     # SAFETY VALIDATION
@@ -481,56 +296,33 @@ def create_booking_flow(
     if not pickup:
 
         session.context = {
-
             "active_flow": BOOKING_FLOW,
-
             "step": AWAITING_PICKUP,
-
-            "data": {}
+            "data": {},
         }
 
         session.save()
 
-        return send_text(
-
-            session.phone_number,
-
-            "Pickup location not found."
-        )
+        return send_text(session.phone_number, "Pickup location not found.")
 
     if not destination:
 
         session.context = {
-
             "active_flow": BOOKING_FLOW,
-
             "step": AWAITING_DESTINATION,
-
-            "data": {
-                "pickup_name": pickup_name
-            }
+            "data": {"pickup_name": pickup_name},
         }
 
         session.save()
 
-        return send_text(
-
-            session.phone_number,
-
-            "Destination location not found."
-        )
+        return send_text(session.phone_number, "Destination location not found.")
 
     # =====================================
     # GET ROUTE
     # =====================================
 
     route_data = get_route(
-
-        pickup["lng"],
-        pickup["lat"],
-
-        destination["lng"],
-        destination["lat"]
+        pickup["lng"], pickup["lat"], destination["lng"], destination["lat"]
     )
 
     # =====================================
@@ -538,18 +330,12 @@ def create_booking_flow(
     # =====================================
 
     booking = create_booking(
-
         passenger=session.user,
-
         pickup_name=pickup_name,
-
         destination_name=destination_name,
-
         pickup=pickup,
-
         destination=destination,
-
-        route_data=route_data
+        route_data=route_data,
     )
 
     # =====================================
@@ -557,16 +343,7 @@ def create_booking_flow(
     # =====================================
 
     matches = find_matching_routes(
-
-        (
-            pickup["lat"],
-            pickup["lng"]
-        ),
-
-        (
-            destination["lat"],
-            destination["lng"]
-        )
+        (pickup["lat"], pickup["lng"]), (destination["lat"], destination["lng"])
     )
 
     # =====================================
@@ -575,10 +352,7 @@ def create_booking_flow(
 
     if matches:
 
-        notify_riders(
-            booking,
-            matches
-        )
+        notify_riders(booking, matches)
 
     # =====================================
     # RESET FLOW
@@ -591,20 +365,16 @@ def create_booking_flow(
     # =====================================
 
     send_text(
-
         session.phone_number,
-
         (
             f"🚘 Ride booked successfully\n\n"
             f"Bookimg ID: {booking.booking_id}\n"
             f"From: {pickup_name}\n"
-
             f"To: {destination_name}\n\n"
-
             f"Estimated Price: "
             # f"₦{booking.estimated_price}"
             f"₦{booking.get_total_price()}"
-        )
+        ),
     )
 
     # =====================================
@@ -612,18 +382,11 @@ def create_booking_flow(
     # =====================================
 
     return send_text(
-
         session.phone_number,
-
         (
             "You can say:\n\n"
-
             "• view my rides\n"
-
             "• check ride status\n"
-
             "• cancel my ride"
-        )
+        ),
     )
-
-

@@ -24,42 +24,33 @@ def otp_is_expired(user):
     if not user.otp_request_time:
         return True
 
-    expiration_time = (
-        user.otp_request_time +
-        timedelta(minutes=OTP_EXPIRATION_MINUTES)
-    )
+    expiration_time = user.otp_request_time + timedelta(minutes=OTP_EXPIRATION_MINUTES)
 
     return timezone.now() > expiration_time
 
 
 def get_existing_user(phone_number):
 
-    return User.objects.filter(
-        phone_no=phone_number,
-        is_verified=True
-    ).first()
+    return User.objects.filter(phone_no=phone_number, is_verified=True).first()
+
 
 def create_user_account(email, user_type, phone_no=None):
 
-    existing_user = User.objects.filter(
-        email=email,
-        is_verified=True
-    ).first()
+    existing_user = User.objects.filter(email=email, is_verified=True).first()
 
     if existing_user:
-        raise ValidationError(
-            "An account with this email already exists."
-        )
+        raise ValidationError("An account with this email already exists.")
 
     user, created = User.objects.get_or_create(
         email=email,
         defaults={
             "user_type": user_type,
             "phone_no": phone_no,
-        }
+        },
     )
 
     return user
+
 
 def send_verification_otp(user):
 
@@ -78,7 +69,7 @@ def send_verification_otp(user):
             f"Your OTP is {otp}",
             settings.DEFAULT_FROM_EMAIL,
             [user.email],
-            fail_silently=False
+            fail_silently=False,
         )
 
         print("OTP EMAIL SENT")
@@ -90,7 +81,7 @@ def send_verification_otp(user):
         traceback.print_exc()
 
         raise e
-    
+
 
 def verify_user_otp(user, otp):
 
@@ -105,6 +96,7 @@ def verify_user_otp(user, otp):
     user.save()
 
     return True, "OTP verified"
+
 
 def generate_tokens(user):
 

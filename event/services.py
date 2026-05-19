@@ -1,11 +1,7 @@
-
 from .models import Event
 
 
-def create_event(
-    organizer,
-    data
-):
+def create_event(organizer, data):
 
     return Event.objects.create(
         organizer=organizer,

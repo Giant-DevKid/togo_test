@@ -12,16 +12,10 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
 
-        parser.add_argument(
-            "--phone",
-            type=str,
-            help="Phone number to reset"
-        )
+        parser.add_argument("--phone", type=str, help="Phone number to reset")
 
         parser.add_argument(
-            "--all",
-            action="store_true",
-            help="Delete all onboarding data"
+            "--all", action="store_true", help="Delete all onboarding data"
         )
 
     def handle(self, *args, **options):
@@ -31,42 +25,26 @@ class Command(BaseCommand):
 
         if delete_all:
 
-            conversation_count = (
-                ConversationSession.objects.all().delete()
-            )
+            conversation_count = ConversationSession.objects.all().delete()
 
-            user_count = (
-                User.objects.all().delete()
-            )
+            user_count = User.objects.all().delete()
 
             self.stdout.write(
-                self.style.SUCCESS(
-                    "All onboarding data deleted successfully."
-                )
+                self.style.SUCCESS("All onboarding data deleted successfully.")
             )
 
             return
 
         if not phone:
 
-            self.stdout.write(
-                self.style.ERROR(
-                    "Provide --phone or use --all"
-                )
-            )
+            self.stdout.write(self.style.ERROR("Provide --phone or use --all"))
 
             return
 
-        ConversationSession.objects.filter(
-            phone_number=phone
-        ).delete()
+        ConversationSession.objects.filter(phone_number=phone).delete()
 
-        User.objects.filter(
-            phone_no=phone
-        ).delete()
+        User.objects.filter(phone_no=phone).delete()
 
         self.stdout.write(
-            self.style.SUCCESS(
-                f"Onboarding reset successful for {phone}"
-            )
+            self.style.SUCCESS(f"Onboarding reset successful for {phone}")
         )

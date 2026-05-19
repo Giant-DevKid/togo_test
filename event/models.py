@@ -1,14 +1,10 @@
-
 from django.db import models
 from account.models import User
 
 
 class Event(models.Model):
 
-    organizer = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE
-    )
+    organizer = models.ForeignKey(User, on_delete=models.CASCADE)
 
     event_name = models.CharField(max_length=255)
 

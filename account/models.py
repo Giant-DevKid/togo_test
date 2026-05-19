@@ -5,12 +5,13 @@ from django.contrib.auth.models import (
     AbstractBaseUser,
     PermissionsMixin,
     BaseUserManager,
-    Group
+    Group,
 )
 
 
 def upload_data(instance, filename):
     return f"users/{instance.id}/{filename}"
+
 
 class UserManager(BaseUserManager):
 
@@ -21,10 +22,7 @@ class UserManager(BaseUserManager):
 
         email = self.normalize_email(email)
 
-        user = self.model(
-            email=email,
-            **extra_fields
-        )
+        user = self.model(email=email, **extra_fields)
 
         if password:
             user.set_password(password)
@@ -34,18 +32,13 @@ class UserManager(BaseUserManager):
         user.save(using=self._db)
 
         return user
-    
+
     def create_user(self, email, password=None, **extra_fields):
 
         extra_fields.setdefault("is_staff", False)
         extra_fields.setdefault("is_superuser", False)
 
-        return self._create_user(
-            email,
-            password,
-            **extra_fields
-        )
-
+        return self._create_user(email, password, **extra_fields)
 
     def create_superuser(self, email, password=None, **extra_fields):
 
@@ -53,15 +46,9 @@ class UserManager(BaseUserManager):
         extra_fields.setdefault("is_superuser", True)
         extra_fields.setdefault("is_verified", True)
 
-        user = self._create_user(
-            email,
-            password,
-            **extra_fields
-        )
+        user = self._create_user(email, password, **extra_fields)
 
-        developer_group, _ = Group.objects.get_or_create(
-            name="developer"
-        )
+        developer_group, _ = Group.objects.get_or_create(name="developer")
 
         user.groups.add(developer_group)
 
@@ -74,7 +61,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     RIDER = "rider"
     EVENT_ORGANISER = "event_organiser"
     TOUR_GUIDE = "tour_guide"
-
 
     USER_TYPES = [
         (PASSENGER, "Passenger"),

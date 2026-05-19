@@ -25,14 +25,12 @@ def register_user(request):
     user = create_user_account(
         email=serializer.validated_data["email"],
         user_type=serializer.validated_data["user_type"],
-        phone_no=serializer.validated_data.get("phone_no")
+        phone_no=serializer.validated_data.get("phone_no"),
     )
 
     send_verification_otp(user)
 
-    return Response({
-        "message": "OTP sent successfully"
-    })
+    return Response({"message": "OTP sent successfully"})
 
 
 @api_view(["POST"])
@@ -41,22 +39,12 @@ def verify_otp(request):
     serializer = VerifyOTPSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    user = User.objects.get(
-        email=serializer.validated_data["email"]
-    )
+    user = User.objects.get(email=serializer.validated_data["email"])
 
-    success, message = verify_user_otp(
-        user,
-        serializer.validated_data["otp"]
-    )
+    success, message = verify_user_otp(user, serializer.validated_data["otp"])
 
     if not success:
-        return Response({
-            "message": message
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": message}, status=status.HTTP_400_BAD_REQUEST)
 
     tokens = generate_tokens(user)
-    return Response({
-        "message": "Verification successful",
-        "tokens": tokens
-    })
+    return Response({"message": "Verification successful", "tokens": tokens})
