@@ -275,3 +275,153 @@ class RideOTP(models.Model):
     created_at = models.DateTimeField(
         auto_now_add=True
     )
+
+
+# =========================================
+# payment/models.py
+# =========================================
+
+class Payment(models.Model):
+
+    STATUS_CHOICES = [
+
+        ("PENDING", "Pending"),
+
+        ("PROCESSING", "Processing"),
+
+        ("SUCCESS", "Success"),
+
+        ("FAILED", "Failed"),
+
+        ("CANCELLED", "Cancelled"),
+
+        ("REFUNDED", "Refunded"),
+    ]
+
+    PROVIDER_CHOICES = [
+
+        ("PAYSTACK", "Paystack"),
+    ]
+
+    booking = models.OneToOneField(
+
+        RideBooking,
+
+        on_delete=models.CASCADE,
+
+        related_name="payment"
+    )
+
+    passenger = models.ForeignKey(
+
+        User,
+
+        on_delete=models.CASCADE,
+
+        related_name="payments"
+    )
+
+    rider = models.ForeignKey(
+
+        User,
+
+        null=True,
+
+        blank=True,
+
+        on_delete=models.SET_NULL,
+
+        related_name="ride_earnings"
+    )
+
+    provider = models.CharField(
+
+        max_length=50,
+
+        choices=PROVIDER_CHOICES,
+
+        default="PAYSTACK"
+    )
+
+    amount = models.DecimalField(
+
+        max_digits=12,
+
+        decimal_places=2
+    )
+
+    currency = models.CharField(
+
+        max_length=10,
+
+        default="NGN"
+    )
+
+    status = models.CharField(
+
+        max_length=50,
+
+        choices=STATUS_CHOICES,
+
+        default="PENDING"
+    )
+
+    payment_reference = models.CharField(
+
+        max_length=255,
+
+        unique=True
+    )
+
+    access_code = models.CharField(
+
+        max_length=255,
+
+        null=True,
+
+        blank=True
+    )
+
+    authorization_url = models.URLField(
+
+        null=True,
+
+        blank=True
+    )
+
+    paid_at = models.DateTimeField(
+
+        null=True,
+
+        blank=True
+    )
+
+    gateway_response = models.JSONField(
+
+        null=True,
+
+        blank=True
+    )
+
+    metadata = models.JSONField(
+
+        default=dict,
+
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    def __str__(self):
+
+        return (
+
+            f"{self.payment_reference} "
+            f"- {self.status}"
+        )

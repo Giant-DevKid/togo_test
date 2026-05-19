@@ -1,8 +1,7 @@
 import requests
 import os
 
-from django.conf import settings
-
+from models import Payment
 
 def initialize_paystack_payment(
     booking
@@ -53,6 +52,37 @@ def initialize_paystack_payment(
 
     data = response.json()
 
-    return data["data"][
-        "authorization_url"
-    ]
+    payment_data = data["data"]
+
+    payment = Payment.objects.create(
+
+        booking=booking,
+
+        passenger=booking.passenger,
+
+        rider=booking.selected_rider,
+
+        amount=booking.final_price,
+
+        provider="PAYSTACK",
+
+        status="PENDING",
+
+        payment_reference=(
+            payment_data["reference"]
+        ),
+
+        access_code=(
+            payment_data["access_code"]
+        ),
+
+        authorization_url=(
+            payment_data[
+                "authorization_url"
+            ]
+        ),
+
+        metadata=payload["metadata"]
+    )
+
+    return payment

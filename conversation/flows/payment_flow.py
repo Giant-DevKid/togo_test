@@ -8,7 +8,7 @@ from conversation.services.message_service import (
     send_text
 )
 
-from payment.services.paystack_service import (
+from rideshare.utils.paystack_service import (
     initialize_paystack_payment
 )
 
@@ -47,7 +47,7 @@ def handle_payment_flow(
 
     if normalized_message == "pay now":
 
-        payment_link = (
+        payment  = (
             initialize_paystack_payment(
                 booking
             )
@@ -60,7 +60,7 @@ def handle_payment_flow(
             (
                 "💳 Complete payment below:\n\n"
 
-                f"{payment_link}"
+                f"{payment.authorization_url}"
             )
         )
 

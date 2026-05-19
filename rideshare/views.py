@@ -1,45 +1,42 @@
-# =========================================
-# payment/views.py
-# =========================================
-
+import os
+import json
 import hmac
 import hashlib
-import json
+from django.db import transaction
 
-from django.conf import settings
 
 from django.http import (
+
     HttpResponse,
+
     JsonResponse
 )
+
+from django.utils import timezone
 
 from django.views.decorators.csrf import (
     csrf_exempt
 )
 
 from rideshare.models import (
-    RideBooking
-)
-
-from conversation.services.message_service import (
-    send_text
+    Payment
 )
 
 from conversation.services.notifications import (
-    send_passenger_payment_success_message, send_rider_payment_success_message
+
+    send_passenger_payment_success_message,
+
+    send_rider_payment_success_message
 )
 
 
-# =========================================
-# PAYSTACK WEBHOOK
-# =========================================
 @csrf_exempt
 def paystack_webhook(
     request
 ):
 
     # =====================================
-    # VERIFY PAYSTACK SIGNATURE
+    # VERIFY SIGNATURE
     # =====================================
 
     signature = request.headers.get(
@@ -48,9 +45,7 @@ def paystack_webhook(
 
     computed_signature = hmac.new(
 
-        settings.PAYSTACK_SECRET_KEY.encode(
-            "utf-8"
-        ),
+        os.getenv("PAYSTACK_SECRET_KEY").encode(),
 
         request.body,
 
@@ -75,7 +70,7 @@ def paystack_webhook(
     event = payload.get("event")
 
     # =====================================
-    # ONLY HANDLE SUCCESSFUL PAYMENTS
+    # HANDLE SUCCESS ONLY
     # =====================================
 
     if event != "charge.success":
@@ -84,67 +79,85 @@ def paystack_webhook(
             status=200
         )
 
-    data = payload.get("data", {})
-
-    metadata = data.get(
-        "metadata",
+    data = payload.get(
+        "data",
         {}
     )
 
-    booking_id = metadata.get(
-        "booking_id"
+    reference = data.get(
+        "reference"
     )
 
-    if not booking_id:
+    if not reference:
 
         return HttpResponse(
             status=400
         )
 
     # =====================================
-    # GET BOOKING
+    # FIND PAYMENT
     # =====================================
 
-    booking = (
+    payment = (
 
-        RideBooking.objects
+        Payment.objects
         .select_related(
+
+            "booking",
 
             "passenger",
 
-            "selected_rider"
+            "rider"
         )
         .filter(
-            id=booking_id
+            payment_reference=reference
         )
         .first()
     )
 
-    if not booking:
+    if not payment:
 
         return HttpResponse(
             status=404
         )
 
     # =====================================
-    # PREVENT DUPLICATE PROCESSING
+    # PREVENT DOUBLE PROCESSING
     # =====================================
 
-    if booking.status == "CONFIRMED":
+    if payment.status == "SUCCESS":
 
         return HttpResponse(
             status=200
         )
 
     # =====================================
-    # CONFIRM BOOKING
+    # UPDATE PAYMENT
     # =====================================
 
-    booking.status = (
-        "CONFIRMED"
-    )
+    with transaction.atomic():
 
-    booking.save()
+        payment.status = "SUCCESS"
+
+        payment.gateway_response = (
+            data
+        )
+
+        payment.paid_at = (
+            timezone.now()
+        )
+
+        payment.save()
+
+        # =====================================
+        # UPDATE BOOKING
+        # =====================================
+
+        booking = payment.booking
+
+        booking.status ="CONFIRMED"
+    
+        booking.save()
 
     # =====================================
     # NOTIFY PASSENGER
