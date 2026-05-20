@@ -19,7 +19,7 @@ def send_passenger_payment_success_message(booking):
         (
             "✅ Payment Successful\n\n"
             "Your ride has been confirmed.\n\n"
-            f"Driver: "
+            f"Your Driver Details: \n"
             f"{rider.first_name} "
             f"{rider.last_name}\n"
             f"Phone: "
@@ -29,7 +29,7 @@ def send_passenger_payment_success_message(booking):
             f"Destination: "
             f"{booking.destination_name}\n\n"
             f"Final Price: "
-            f"₦{booking.final_price}\n\n"
+            f"₦{booking.get_total_price()}\n\n"
             "You can now call or "
             "chat with your driver. After ride completion, "
             "an otp will be sent to you by the driver for verification. "

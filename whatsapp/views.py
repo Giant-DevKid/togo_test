@@ -68,17 +68,54 @@ def whatsapp_webhook(request):
             message_type = message_data["type"]
 
             # =================================
-            # TEXT
+            # TEXT MESSAGE
             # =================================
 
             if message_type == "text":
 
                 message_text = message_data["text"]["body"]
 
+            # =================================
+            # INTERACTIVE MESSAGE
+            # =================================
+
+            elif message_type == "interactive":
+
+                interactive = message_data.get("interactive", {})
+
+                interactive_type = interactive.get("type")
+
+                # =============================
+                # BUTTON REPLY
+                # =============================
+
+                if interactive_type == "button_reply":
+
+                    message_text = interactive["button_reply"]["id"]
+
+                # =============================
+                # LIST REPLY
+                # =============================
+
+                elif interactive_type == "list_reply":
+
+                    message_text = interactive["list_reply"]["id"]
+
+                else:
+
+                    return Response({"status": ("unsupported interactive")})
+
+            # =================================
+            # UNSUPPORTED
+            # =================================
+
             else:
 
                 return Response({"status": "unsupported type"})
 
+            print("MESSAGE TYPE:", message_type)
+
+            print("MESSAGE TEXT:", message_text)
             # =================================
             # SESSION
             # =================================

@@ -11,7 +11,9 @@ from whatsapp.services import (
     send_interactive_buttons_message,
     send_whatsapp_message,
 )
-
+from conversation.services.message_service import (
+    send_buttons,
+)
 from conversation.services.message_service import (
     send_text,
 )
@@ -381,27 +383,43 @@ def notify_riders(booking, matched_routes):
         # SEND AI MESSAGE
         # =================================
 
-        send_text(
+        # send_text(
+        #     rider.phone_no,
+        #     (
+        #         "🚘 New Ride Request\n\n"
+        #         f"Booking ID: "
+        #         f"{booking.booking_id}\n\n"
+        #         f"Request ID: "
+        #         f"{response.id}\n\n"
+        #         f"Pickup: "
+        #         f"{booking.pickup_name}\n"
+        #         f"Destination: "
+        #         f"{booking.destination_name}\n"
+        #         f"Estimated Price: "
+        #         f"₦{booking.get_base_price()}\n\n"
+        #         # f"Estimated Price: "
+        #         # f"₦{booking.estimated_price}\n\n"
+        #         "You can reply:\n\n"
+        #         f"• accept {response.id}\n"
+        #         f"• reject {response.id}\n"
+        #         f"• offer {response.id} 4500"
+        #     ),
+        # )
+        send_buttons(
             rider.phone_no,
             (
-                "🚘 New Ride Request\n\n"
+                f"🚘 New Ride Request\n\n"
                 f"Booking ID: "
                 f"{booking.booking_id}\n\n"
-                f"Request ID: "
-                f"{response.id}\n\n"
-                f"Pickup: "
-                f"{booking.pickup_name}\n"
-                f"Destination: "
-                f"{booking.destination_name}\n"
-                f"Estimated Price: "
-                f"₦{booking.get_base_price()}\n\n"
-                # f"Estimated Price: "
-                # f"₦{booking.estimated_price}\n\n"
-                "You can reply:\n\n"
-                f"• accept {response.id}\n"
-                f"• reject {response.id}\n"
-                f"• offer {response.id} 4500"
+                f"Pickup: {booking.pickup_name}\n"
+                f"Destination: {booking.destination_name}\n\n"
+                f"Payout: ₦{booking.get_rider_payout()}"
             ),
+            [
+                {"id": f"accept_{response.id}", "title": "Accept"},
+                {"id": f"reject_{response.id}", "title": "Reject"},
+                {"id": f"offer_{response.id}", "title": "Change Price"},
+            ],
         )
 
 

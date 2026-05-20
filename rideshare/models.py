@@ -146,7 +146,7 @@ class RideBooking(models.Model):
 
     PASSENGER_SERVICE_RATE = Decimal("0.05")
 
-    RIDER_COMMISSION_RATE = Decimal("0.05")
+    RIDER_COMMISSION_RATE = Decimal("0.10")
 
     # =====================================
     # STRING REPRESENTATION

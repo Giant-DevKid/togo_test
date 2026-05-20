@@ -175,18 +175,6 @@ def send_list_message(to, body, button_text, sections, footer=None):
     return response.json()
 
 
-def send_message_with_menu(
-    phone_number,
-    message,
-    menu_body,
-    buttons,
-):
-
-    send_whatsapp_message(phone_number, message)
-
-    return send_whatsapp_buttons(to=phone_number, body_text=menu_body, buttons=buttons)
-
-
 def send_whatsapp_image(to, image_url, caption=None):
 
     url = f"https://graph.facebook.com/v23.0/" f"{PHONE_NUMBER_ID}/messages"

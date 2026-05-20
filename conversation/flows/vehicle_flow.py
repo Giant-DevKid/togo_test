@@ -2,7 +2,7 @@ from rideshare.models import Vehicle
 
 from rideshare.services import get_user_vehicle
 
-from conversation.services.message_service import send_text, send_button_message
+from conversation.services.message_service import send_text, send_buttons
 
 from conversation.state.vehicle_steps import (
     VEHICLE_FLOW,
@@ -69,18 +69,13 @@ def view_vehicle_flow(session):
     vehicle = get_user_vehicle(session.user)
 
     if not vehicle:
-
-        return send_text(
+        return send_buttons(
             session.phone_number,
-            (
-                "You don't have a "
-                "vehicle profile yet.\n\n"
-                "You can say:\n"
-                "- Add my vehicle"
-            ),
+            ("You don't have a " "vehicle profile yet."),
+            [{"id": "create vehicle", "title": "Add Vehicle"}],
         )
 
-    return send_text(
+    return send_buttons(
         session.phone_number,
         (
             f"🚘 Vehicle Profile\n\n"
@@ -90,9 +85,10 @@ def view_vehicle_flow(session):
             f"{vehicle.plate_no}\n"
             f"Seat Capacity: "
             f"{vehicle.seat_cap}\n\n"
-            "You can also say:\n"
-            "- Update my vehicle"
         ),
+        [
+            {"id": "update_my_vehicle", "title": "Update my vehicle"},
+        ],
     )
 
 
@@ -108,17 +104,14 @@ def start_vehicle_flow(session, action):
     }
 
     session.save()
-
-    return send_text(
+    return send_buttons(
         session.phone_number,
-        (
-            "What type of vehicle "
-            "do you have?\n\n"
-            "Examples:\n"
-            "- Car\n"
-            "- Bus\n"
-            "- Motorcycle"
-        ),
+        ("What type of vehicle " "do you have?"),
+        [
+            {"id": "car", "title": "Car"},
+            {"id": "bus", "title": "Bus"},
+            {"id": "motorcycle", "title": "Motorcycle"},
+        ],
     )
 
 
@@ -139,16 +132,14 @@ def handle_vehicle_type_step(session, message):
     vehicle_type = valid_types.get(raw)
 
     if not vehicle_type:
-
-        return send_text(
+        return send_buttons(
             session.phone_number,
-            (
-                "Invalid vehicle type.\n\n"
-                "Please reply with one of:\n"
-                "- Car\n"
-                "- Bus\n"
-                "- Motorcycle"
-            ),
+            ("Invalid vehicle type. " "Please click on the button to proceed?"),
+            [
+                {"id": "car", "title": "Car"},
+                {"id": "bus", "title": "Bus"},
+                {"id": "motorcycle", "title": "Motorcycle"},
+            ],
         )
 
     session.context["data"]["vehicle_type"] = vehicle_type

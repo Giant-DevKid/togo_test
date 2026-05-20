@@ -100,7 +100,17 @@ def update_booking_flow(session, message):
 def cancel_booking_flow(session):
 
     booking = (
-        RideBooking.objects.filter(passenger=session.user, status="PENDING")
+        RideBooking.objects.filter(
+            passenger=session.user,
+            status__in=[
+                "PENDING",
+                "RIDER_SELECTED",
+                "PAYMENT_PENDING",
+                "CONFIRMED",
+                "IN_PROGRESS",
+                "OTP_PENDING",
+            ],
+        )
         .order_by("-created_at")
         .first()
     )
@@ -325,6 +335,41 @@ def create_booking_flow(session, pickup_name, destination_name):
     route_data = get_route(
         pickup["lng"], pickup["lat"], destination["lng"], destination["lat"]
     )
+
+    # =====================================
+    # CHECK EXISTING ACTIVE BOOKING
+    # =====================================
+
+    existing_booking = (
+        RideBooking.objects.filter(
+            passenger=session.user,
+            status__in=[
+                "PENDING",
+                "RIDER_SELECTED",
+                "PAYMENT_PENDING",
+                "CONFIRMED",
+                "IN_PROGRESS",
+                "OTP_PENDING",
+            ],
+        )
+        .order_by("-created_at")
+        .first()
+    )
+
+    if existing_booking:
+
+        reset_session(session)
+
+        return send_text(
+            session.phone_number,
+            (
+                "❌ You already have an active ride booking.\n\n"
+                f"Booking ID: {existing_booking.booking_id}\n"
+                f"Status: {existing_booking.status}\n\n"
+                "You must complete or cancel the current ride "
+                "before creating another booking."
+            ),
+        )
 
     # =====================================
     # CREATE BOOKING

@@ -18,6 +18,7 @@ from conversation.state.vehicle_steps import VEHICLE_FLOW
 from conversation.state.bank_steps import BANK_FLOW, BANK_UPDATE_FLOW
 from conversation.state.route_steps import *
 from conversation.state.booking_steps import BOOKING_FLOW
+from conversation.state.rider_request_steps import *
 from conversation.state.payment_steps import PAYMENT_FLOW, AWAITING_PAYMENT
 from conversation.flows.ride_completion_flow import handle_ride_completion_flow
 from conversation.flows.bank_flow import (
@@ -44,57 +45,6 @@ GREETING_MESSAGES = [
 
 
 def route_message(session, message):
-    # =====================================
-    # BUTTON PAYLOAD NORMALIZATION
-    # =====================================
-
-    BUTTON_MESSAGE_MAP = {
-
-        # VEHICLE
-        "create_vehicle": "add my vehicle",
-
-        "update_vehicle": "update my vehicle",
-
-        "vehicle_type_car": "car",
-
-        "vehicle_type_bus": "bus",
-
-        "vehicle_type_motorcycle": "motorcycle",
-
-        # BANK
-        "add_bank_account": "add bank account",
-
-        "update_bank_account": "update bank account",
-
-        "view_bank_account": "view bank account",
-
-        # PAYMENT
-        "pay_now": "pay now",
-
-        "cancel_ride": "cancel ride",
-
-        # ROUTES
-        "create_route": "create route",
-
-        "view_routes": "view my routes",
-
-        # RIDES
-        "view_ride_requests": "view ride requests",
-
-        "view_ride_offers": "view ride offers",
-    }
-
-    # =====================================
-    # CONVERT BUTTON ID TO TEXT
-    # =====================================
-
-    if message in BUTTON_MESSAGE_MAP:
-
-        message = BUTTON_MESSAGE_MAP[message]
-
-    # normalized_message = (
-    #     message.strip().lower()
-    # )
 
     normalized_message = message.strip().lower()
 
@@ -155,6 +105,96 @@ def route_message(session, message):
         )
 
     # =====================================
+    #  DRIVER RIDE REQUEST ACTION
+    # =====================================
+    if normalized_message.startswith("ride_request_"):
+
+        response_id = int(normalized_message.replace("ride_request_", ""))
+
+        return show_ride_request_actions(session, response_id)
+
+    # =====================================
+    # ACCEPT BUTTON
+    # =====================================
+
+    if normalized_message.startswith("accept_"):
+
+        response_id = int(normalized_message.replace("accept_", ""))
+
+        return accept_ride_request(session, response_id)
+
+    # =====================================
+    # REJECT BUTTON
+    # =====================================
+
+    if normalized_message.startswith("reject_"):
+
+        response_id = int(normalized_message.replace("reject_", ""))
+
+        return reject_ride_request(session, response_id)
+
+    # =====================================
+    # PAY NOW BUTTON
+    # =====================================
+
+    if normalized_message.startswith("pay_now_"):
+
+        booking_id = int(normalized_message.replace("pay_now_", ""))
+
+        session.context = {
+            "active_flow": PAYMENT_FLOW,
+            "step": AWAITING_PAYMENT,
+            "data": {"booking_id": booking_id},
+        }
+
+        session.save()
+
+        return handle_payment_flow(session, "pay now")
+
+    # =====================================
+    # CANCEL RIDE BUTTON
+    # =====================================
+
+    if normalized_message.startswith("cancel_ride_"):
+
+        booking_id = int(normalized_message.replace("cancel_ride_", ""))
+
+        booking = RideBooking.objects.filter(
+            id=booking_id, passenger=session.user
+        ).first()
+
+        if not booking:
+
+            return send_text(session.phone_number, "Booking not found.")
+
+        booking.status = "CANCELLED"
+
+        booking.save()
+
+        reset_session(session)
+
+        return send_text(session.phone_number, "Ride cancelled successfully ❌")
+    # =====================================
+    # OFFER BUTTON
+    # =====================================
+
+    if normalized_message.startswith("offer_"):
+
+        response_id = int(normalized_message.replace("offer_", ""))
+
+        session.context = {
+            "active_flow": "RIDE_PRICE_OFFER",
+            "step": "ASK_NEW_PRICE",
+            "data": {"response_id": response_id},
+        }
+
+        session.save()
+
+        return send_text(
+            session.phone_number,
+            ("Enter your new offer amount.\n\n" "Example:\n" "12000"),
+        )
+    # =====================================
     # VEHICLE FLOW
     # =====================================
 
@@ -189,6 +229,22 @@ def route_message(session, message):
         if step == SELECTING_RIDER:
 
             return handle_rider_selection(session, message)
+
+    if active_flow == RIDE_PRICE_OFFER:
+
+        response_id = session.context["data"].get("response_id")
+
+        try:
+
+            amount = int(message)
+
+        except ValueError:
+
+            return send_text(session.phone_number, "Enter a valid amount.")
+
+        reset_session(session)
+
+        return offer_new_price(session, response_id, amount)
 
     # =====================================
     # RIDE OFFER PYMENT FLOW

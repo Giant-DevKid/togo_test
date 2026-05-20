@@ -99,75 +99,35 @@ def handle_verify_otp(session, booking_id=None, otp=None):
 
     release_rider_payment(booking)
 
-    send_text(booking.passenger.phone_no, ("✅ Ride completed."))
+    send_text(
+        booking.passenger.phone_no,
+        (
+            "✅ Ride completed successfully.\n\n"
+            "Thank you for choosing Togo Mobility "
+            "for your journey today 🚘\n\n"
+            "We appreciate your trust in us and "
+            "look forward to getting you to your "
+            "next destination safely and comfortably.\n\n"
+            "Have a wonderful day 💚"
+        ),
+    )
 
     send_text(
         booking.selected_rider.phone_no, ("✅ Ride completed.\n\n" "Payout processing.")
     )
 
-    return send_text(session.phone_number, ("Ride completed successfully."))
-
-
-# def handle_ride_completion_flow(
-#     session,
-#     message
-# ):
-
-#     extracted = (
-#         extract_ride_completion_data(
-#             message
-#         )
-#     )
-
-#     action = extracted.get(
-#         "action"
-#     )
-
-#     booking_id = extracted.get(
-#         "booking_id"
-#     )
-
-#     otp = extracted.get(
-#         "otp"
-#     )
-
-#     # =====================================
-#     # REQUEST OTP
-#     # =====================================
-
-#     if action == "REQUEST_OTP":
-
-#         return handle_request_otp(
-
-#             session,
-
-#             booking_id
-#         )
-
-#     # =====================================
-#     # VERIFY OTP
-#     # =====================================
-
-#     if action == "VERIFY_OTP":
-
-#         return handle_verify_otp(
-
-#             session,
-
-#             booking_id,
-
-#             otp
-#         )
-
-#     return send_text(
-
-#         session.phone_number,
-
-#         (
-#             "I couldn't understand "
-#             "your request."
-#         )
-#     )
+    return send_text(
+        booking.selected_rider.phone_no,
+        (
+            "✅ Ride completed successfully.\n\n"
+            "Thank you for driving with Togo Mobility "
+            "today 🚘\n\n"
+            "We appreciate your dedication and effort "
+            "in providing a safe and comfortable ride "
+            "for passengers.\n\n"
+            "Keep driving safely and earning with us 💚"
+        ),
+    )
 
 
 def handle_ride_completion_flow(session, message):
@@ -184,7 +144,7 @@ def handle_ride_completion_flow(session, message):
 
     if booking_id and not re.match(r"^RID-[A-Z0-9]{6}$", booking_id):
 
-        return send_text(session.phone_number, "Invalid booking reference.")
+        return send_text(session.phone_number, "Invalid booking ID.")
 
     # =====================================
     # REQUEST OTP

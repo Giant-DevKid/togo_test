@@ -7,15 +7,10 @@ from django.shortcuts import render, get_object_or_404
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-
-
 from django.http import HttpResponse, JsonResponse
-
 from django.utils import timezone
-
 from django.views.decorators.csrf import csrf_exempt
-
-from rideshare.models import Payment
+from .models import Payment
 
 from conversation.services.notifications import (
     send_passenger_payment_success_message,
@@ -171,14 +166,6 @@ def paystack_callback_page(request):
     }
 
     return render(request, "payment/paystack_callback.html", context)
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
-from django.shortcuts import get_object_or_404
-
-from .models import Payment
 
 
 class PaystackCallbackAPIView(APIView):

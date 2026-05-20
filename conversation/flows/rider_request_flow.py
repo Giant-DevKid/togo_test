@@ -6,16 +6,21 @@ from rideshare.models import (
     RideBooking,
 )
 
-from conversation.services.message_service import send_text
+from conversation.services.message_service import (
+    send_text,
+    send_list_message,
+    send_buttons,
+)
 
 from conversation.state.rider_request_steps import RIDE_OFFER_FLOW, SELECTING_RIDER
 
 from conversation.state.payment_steps import *
 
-
 # =========================================
 # VIEW MATCHING REQUESTS FOR RIDERS
 # =========================================
+
+
 def view_ride_requests(session):
 
     requests = (
@@ -30,29 +35,35 @@ def view_ride_requests(session):
             session.phone_number, ("You do not have any " "pending ride requests.")
         )
 
-    message = "🚘 Matching Ride Requests\n\n"
+    rows = []
 
-    for index, req in enumerate(requests, start=1):
+    for req in requests:
 
         booking = req.booking
 
-        message += (
-            f"{index}. "
-            f"{booking.pickup_name} → "
-            f"{booking.destination_name}\n"
-            f"Price: ₦"
-            f"{booking.get_rider_payout()}"
-            f"Request ID: {req.id}\n\n"
+        rows.append(
+            {
+                "id": f"ride_request_{req.id}",
+                "title": (f"{booking.pickup_name} → " f"{booking.destination_name}")[
+                    :24
+                ],
+                "description": (f"₦{booking.get_rider_payout()}")[:72],
+            }
         )
 
-    message += "You can say:\n\n" "• accept 14\n" "• reject 14\n" "• offer 14 5000"
-
-    return send_text(session.phone_number, message)
+    return send_list_message(
+        session.phone_number,
+        "🚘 Matching Ride Requests",
+        "View Requests",
+        [{"title": "Available Requests", "rows": rows}],
+    )
 
 
 # =========================================
 # RIDER RIDE REQUEST ACTIONS SELECTION
 # =========================================
+
+
 def accept_ride_request(session, response_id):
 
     ride_response = (
@@ -129,19 +140,16 @@ def offer_new_price(session, response_id, price):
     # =====================================
     # UPDATE RESPONSE
     # =====================================
-    base_price = Decimal(price)
-
-    service_charge = base_price * Decimal("0.05")
-
-    total_price = (base_price + service_charge).quantize(Decimal("0.01"))
-
     ride_response.response = "ACCEPTED"
 
-    ride_response.updated_price = total_price
+    ride_response.updated_price = Decimal(price)
 
     ride_response.save()
 
     booking = ride_response.booking
+
+    # temporary calculation preview
+    booking.final_price = Decimal(price)
 
     # =====================================
     # NOTIFY PASSENGER
@@ -153,13 +161,15 @@ def offer_new_price(session, response_id, price):
             "🚘 Driver Sent New Offer\n\n"
             f"Driver: "
             f"{session.user.first_name}\n"
-            f"New Price: ₦{total_price}\n\n"
+            f"New Price: ₦{booking.get_total_price()}\n\n"
             "Say:\n"
             "• view ride offers"
         ),
     )
 
-    return send_text(session.phone_number, (f"New offer sent: ₦{total_price} ✅"))
+    return send_text(
+        session.phone_number, (f"New offer sent: ₦{booking.get_base_price()} ✅")
+    )
 
 
 # =========================================
@@ -248,31 +258,20 @@ def view_ride_offers(session):
 
     for index, response in enumerate(responses, start=1):
 
-        # price = (
+        # base_price = response.updated_price or booking.estimated_price
 
-        #     response.updated_price
+        # service_charge = base_price * Decimal("0.05")
 
-        #     or
+        # price = (base_price + service_charge).quantize(Decimal("0.05"))
+        booking.final_price = response.updated_price or booking.estimated_price
 
-        #     booking.estimated_price
-        # )
-        base_price = response.updated_price or booking.estimated_price
+        message += (
+            f"{index}. "
+            f"{response.rider.first_name}\n"
+            f"Price: ₦{booking.get_total_price()}\n\n"
+        )
 
-        service_charge = base_price * Decimal("0.05")
-
-        price = (base_price + service_charge).quantize(Decimal("0.05"))
-
-        message += f"{index}. " f"{response.rider.first_name}\n" f"Price: ₦{price}\n\n"
-
-    # message += (
-
-    #     "Reply with:\n\n"
-
-    #     "select 1\n"
-
-    #     "select 2"
-    # )
-    message += "Reply with the number of " "the driver you want.\n\n" "Example:\n" "1"
+    message += "Reply with the number of " "the driver you want.\n\n"
 
     # =====================================
     # SAVE FLOW CONTEXT
@@ -304,7 +303,7 @@ def handle_rider_selection(session, message):
 
         return send_text(
             session.phone_number,
-            ("Please reply with the " "driver number only.\n\n" "Example:\n" "1"),
+            ("Please reply with the " " number only.\n\n"),
         )
 
     selected_index = int(normalized_message)
@@ -392,21 +391,66 @@ def handle_rider_selection(session, message):
             f"Destination: "
             f"{booking.destination_name}\n\n"
             f"Final Price: "
-            f"₦{booking.get_rider_payout()}"
+            f"₦{booking.get_base_price()}"
         ),
     )
 
     session.save()
 
-    return send_text(
+    # return send_text(
+    #     session.phone_number,
+    #     (
+    #         "✅ Driver selected successfully\n\n"
+    #         f"Driver: "
+    #         f"{selected_response.rider.first_name}\n"
+    #         f"Price: ₦{booking.get_total_price()}\n\n"
+    #         "Reply with:\n\n"
+    #         "• pay now\n"
+    #         "• cancel ride"
+    #     ),
+    # )
+    return send_buttons(
         session.phone_number,
         (
             "✅ Driver selected successfully\n\n"
             f"Driver: "
             f"{selected_response.rider.first_name}\n"
-            f"Price: ₦{booking.get_total_price()}\n\n"
-            "Reply with:\n\n"
-            "• pay now\n"
-            "• cancel ride"
+            f"Price: "
+            f"₦{booking.get_total_price()}"
         ),
+        [
+            {"id": (f"pay_now_" f"{booking.id}"), "title": "Pay Now"},
+            {"id": (f"cancel_ride_" f"{booking.id}"), "title": "Cancel Ride"},
+        ],
+    )
+
+
+def show_ride_request_actions(session, response_id):
+
+    ride_response = (
+        RideBookingResponse.objects.filter(id=response_id, rider=session.user)
+        .select_related("booking")
+        .first()
+    )
+
+    if not ride_response:
+
+        return send_text(session.phone_number, "Ride request not found.")
+
+    booking = ride_response.booking
+
+    return send_buttons(
+        session.phone_number,
+        (
+            f"🚘 Ride Request\n\n"
+            f"{booking.pickup_name} → "
+            f"{booking.destination_name}\n\n"
+            f"Payout: "
+            f"₦{booking.get_rider_payout()}"
+        ),
+        [
+            {"id": f"accept_{response_id}", "title": "Accept"},
+            {"id": f"reject_{response_id}", "title": "Reject"},
+            {"id": f"offer_{response_id}", "title": "Offer Price"},
+        ],
     )
